@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Global Button Interactive Matrix */
+@layer base {
+  button {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+    outline: 2px solid transparent;
+    outline-offset: 0px;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    outline-color: rgba(59, 130, 246, 0.5); /* Blue-500 semi-transparent glowing border */
+    outline-offset: 3px;
+    filter: brightness(1.05);
+    box-shadow: 0 8px 20px -5px rgba(0,0,0,0.15);
+  }
+
+  button:active {
+    transform: scale(0.95) translateY(0);
+    outline-color: transparent;
+    outline-offset: 0px;
+  }
+}
+
+/* Reusable Glassmorphism & Interactive Utilities */
+@layer components {
+  .glass-card {
+    @apply bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-white/40 dark:border-gray-700/50 shadow-xl transition-all duration-300;
+  }
+
+  .interactive-box {
+    @apply hover:shadow-2xl hover:-translate-y-1 hover:border-blue-400/50 dark:hover:border-blue-500/50 transition-all duration-300;
+  }
+
+  .modern-input {
+    @apply bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none backdrop-blur-sm;
+  }
+
+  .glow-on-hover {
+    @apply relative overflow-hidden;
+  }
+
+  .glow-on-hover::after {
+    @apply content-[''] absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 opacity-0 pointer-events-none transition-opacity duration-300;
+  }
+
+  .glow-on-hover:hover::after {
+    @apply opacity-100;
+  }
+}
