@@ -4,6 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -44,6 +46,70 @@ const AdminDashboard = () => {
   const ticketData = Object.entries(stats.ticketPriorityDistribution).map(([name, value]) => ({ name, value }));
   const trendData = Object.entries(stats.bookingTrends).map(([name, value]) => ({ name, value }));
 
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(59, 130, 246);
+    doc.text("SMART CAMPUS ANALYTICS", 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+    // Section 1: Key Statistics
+    doc.setFontSize(16);
+    doc.setTextColor(0);
+    doc.text("System Overview", 14, 40);
+    
+    autoTable(doc, {
+      body: [
+        ["Total Users", stats.totalUsers.toString()],
+        ["Total Resources", stats.totalResources.toString()],
+        ["Pending Bookings", stats.pendingBookings.toString()],
+        ["Open Tickets", stats.openTickets.toString()]
+      ],
+      startY: 45,
+      theme: 'plain',
+      styles: { fontSize: 11, cellPadding: 2 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 50 } }
+    });
+
+    // Section 2: Resource Distribution
+    doc.text("Resources by Type", 14, doc.lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      head: [["Resource Type", "Count"]],
+      body: resourceData.map(d => [d.name, d.value.toString()]),
+      startY: doc.lastAutoTable.finalY + 20,
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+
+    // Section 3: Ticket Priority
+    doc.text("Tickets by Priority", 14, doc.lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      head: [["Priority Level", "Count"]],
+      body: ticketData.map(d => [d.name, d.value.toString()]),
+      startY: doc.lastAutoTable.finalY + 20,
+      theme: 'striped',
+      headStyles: { fillColor: [244, 63, 94] } // rose-500
+    });
+
+    // Section 4: Booking Trends
+    doc.addPage();
+    doc.text("Booking Trends (Last 7 Days)", 14, 20);
+    autoTable(doc, {
+      head: [["Date", "Bookings"]],
+      body: trendData.map(d => [d.name, d.value.toString()]),
+      startY: 25,
+      theme: 'striped',
+      headStyles: { fillColor: [16, 185, 129] } // emerald-500
+    });
+
+    doc.save(`analytics_report_${new Date().getTime()}.pdf`);
+  };
+
   return (
     <div className="space-y-10 animate-fade-in pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -51,6 +117,10 @@ const AdminDashboard = () => {
           <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight uppercase italic">Dashboard Overview</h2>
           <p className="text-gray-500 dark:text-gray-400 font-medium tracking-wide">Overview of the Smart Campus system.</p>
         </div>
+        <button onClick={downloadPDF} className="px-5 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl shadow-sm border border-red-100 dark:border-red-800 hover:bg-red-600 hover:text-white transition-all duration-300 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            Export PDF Report
+        </button>
       </div>
 
       {/* Summary Cards */}

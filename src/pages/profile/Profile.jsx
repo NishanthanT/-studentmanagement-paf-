@@ -46,7 +46,21 @@ const Profile = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let { name, value } = e.target;
+    
+    // Auto-format phone number XXX-XXXX-XXX
+    if (name === 'phoneNumber') {
+      const digits = value.replace(/\D/g, '');
+      if (digits.length <= 3) {
+        value = digits;
+      } else if (digits.length <= 7) {
+        value = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      } else {
+        value = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 10)}`;
+      }
+    }
+
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleImageUpload = (e) => {
@@ -65,6 +79,13 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
+    // Validate Phone Number
+    const phoneRegex = /^\d{3}-\d{4}-\d{3}$/;
+    if (formData.phoneNumber && !phoneRegex.test(formData.phoneNumber)) {
+      showAlert('Phone number must be exactly 10 digits in XXX-XXXX-XXX format.', 'error');
+      return;
+    }
+
     try {
       setSaving(true);
       await userService.updateProfile({
@@ -192,25 +213,25 @@ const Profile = () => {
         {isEditing ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl">
             <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Identity Tag (Full Name)</label>
+              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Name</label>
               <input
                 type="text"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                placeholder="Enter formal identity..."
+                placeholder="Enter your name..."
                 className="modern-input w-full"
               />
             </div>
             
             <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Emergency Contact (Phone)</label>
+              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Contact No</label>
               <input
                 type="text"
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleChange}
-                placeholder="Network extension..."
+                placeholder="Enter contact number..."
                 className="modern-input w-full"
               />
             </div>
@@ -241,7 +262,7 @@ const Profile = () => {
             <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg p-5 rounded-2xl border border-white/60 dark:border-gray-600/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-blue-100/80 dark:bg-blue-900/50 text-blue-600 rounded-lg shadow-inner group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></div>
-                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Legal Identity</h4>
+                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Name</h4>
               </div>
               <p className="text-lg font-bold text-gray-900 dark:text-white mt-1 group-hover:translate-x-1 transition-transform drop-shadow-sm">{user.fullName}</p>
             </div>
@@ -249,7 +270,7 @@ const Profile = () => {
             <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg p-5 rounded-2xl border border-white/60 dark:border-gray-600/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-purple-100/80 dark:bg-purple-900/50 text-purple-600 rounded-lg shadow-inner group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>
-                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Registry Contact</h4>
+                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Email</h4>
               </div>
               <p className="text-lg font-bold text-gray-900 dark:text-white mt-1 truncate group-hover:translate-x-1 transition-transform drop-shadow-sm" title={user.email}>{user.email}</p>
             </div>
@@ -257,7 +278,7 @@ const Profile = () => {
             <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg p-5 rounded-2xl border border-white/60 dark:border-gray-600/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-emerald-100/80 dark:bg-emerald-900/50 text-emerald-600 rounded-lg shadow-inner group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg></div>
-                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Network Node Ext</h4>
+                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Contact No</h4>
               </div>
               <p className="text-lg font-bold text-gray-900 dark:text-white mt-1 group-hover:translate-x-1 transition-transform drop-shadow-sm">{user.phoneNumber || 'N/A'}</p>
             </div>
@@ -265,7 +286,7 @@ const Profile = () => {
             <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg p-5 rounded-2xl border border-white/60 dark:border-gray-600/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-orange-100/80 dark:bg-orange-900/50 text-orange-600 rounded-lg shadow-inner group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
-                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Network Injection Date</h4>
+                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Created Date</h4>
               </div>
               <p className="text-lg font-bold text-gray-900 dark:text-white mt-1 group-hover:translate-x-1 transition-transform drop-shadow-sm">{new Date(user.createdAt).toLocaleString()}</p>
             </div>

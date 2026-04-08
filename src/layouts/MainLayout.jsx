@@ -34,9 +34,14 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200 flex flex-col">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200 flex flex-col relative overflow-hidden">
+      {/* Global Background Animated Orbs for ALL Pages */}
+      <div className="fixed top-0 left-0 w-96 h-96 bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow -z-10"></div>
+      <div className="fixed bottom-0 right-0 w-96 h-96 bg-purple-500/10 dark:bg-purple-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow -z-10" style={{ animationDelay: '2s' }}></div>
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-indigo-500/5 rounded-full blur-[150px] pointer-events-none animate-spin-slow -z-10"></div>
+
       {/* Professional Gradient Header */}
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 border-b border-indigo-400/30 shadow-lg transition-all duration-500">
+      <header className="flex-none z-50 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 border-b border-indigo-400/30 shadow-lg transition-all duration-500">
         {/* Subtle Brand Accent Line */}
         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-300 via-indigo-300 to-purple-300 opacity-50"></div>
         
@@ -94,9 +99,12 @@ const MainLayout = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
+      {/* Main Content with Border Animation Box */}
+      <main className="flex-1 overflow-y-auto w-full relative z-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+          <div className="absolute inset-x-4 inset-y-8 sm:inset-x-6 lg:inset-x-8 lg:inset-y-8 border-2 border-transparent bg-gradient-to-tr from-blue-500/10 via-purple-500/10 to-blue-500/10 rounded-[32px] pointer-events-none -z-10 bg-[length:200%_200%] animate-bgTransfer"></div>
+          <Outlet />
+        </div>
       </main>
 
       {/* Footer */}

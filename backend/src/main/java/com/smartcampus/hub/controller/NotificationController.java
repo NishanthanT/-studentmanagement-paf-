@@ -39,4 +39,10 @@ public class NotificationController {
         notificationService.markAllAsRead(userDetails.getUsername());
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/clear-all")
+    public ResponseEntity<Void> clearAllNotifications(@AuthenticationPrincipal UserDetails userDetails) {
+        notificationService.deleteAllByUserId(userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -73,6 +73,14 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.saveAll(unread);
     }
 
+    @Override
+    @Transactional
+    public void deleteAllByUserId(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        notificationRepository.deleteByUserId(user.getId());
+    }
+
     private NotificationResponse mapToResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())

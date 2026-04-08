@@ -19,6 +19,7 @@ const CreateTicket = () => {
     const [attachments, setAttachments] = useState([]);
     const [previews, setPreviews] = useState([]);
     const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
+    const [validationError, setValidationError] = useState(null);
 
     useEffect(() => {
         const fetchResources = async () => {
@@ -63,8 +64,40 @@ const CreateTicket = () => {
         setTimeout(() => setAlert({ show: false, message: '', type: 'success' }), 4000);
     };
 
+    const validateForm = () => {
+        if (!formData.location.trim()) return "Location cannot be empty.";
+        if (!formData.category.trim()) return "Please select a Category.";
+        if (!formData.description.trim()) return "Please provide a detailed Issue Description.";
+        
+        const contact = formData.preferredContact.trim();
+        if (!contact) return "Contact Method is required.";
+        
+        const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+        const phoneRegex = /^\d{10}$/;
+        
+        if (contact.includes('@') || /[a-zA-Z]/.test(contact)) {
+            if (!emailRegex.test(contact)) {
+                return "Please enter a valid Email Address (e.g., user@example.com).";
+            }
+        } else {
+            const cleanPhone = contact.replace(/[- \+]/g, '');
+            if (!phoneRegex.test(cleanPhone)) {
+                return "Please enter exactly a 10-digit Phone Number.";
+            }
+        }
+        
+        return null;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const error = validateForm();
+        if (error) {
+            setValidationError(error);
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -230,6 +263,24 @@ const CreateTicket = () => {
                     </div>
                 </form>
             </div>
+
+            {/* Validation Error Modal */}
+            {validationError && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="glass-card max-w-sm w-full p-8 shadow-2xl space-y-6 transform scale-100 animate-slide-up border-rose-500/30">
+                        <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-center text-gray-900 dark:text-white">Validation Error</h3>
+                        <p className="text-center text-gray-600 dark:text-gray-400 text-sm font-medium">{validationError}</p>
+                        <div className="pt-4">
+                            <Button className="w-full bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20" onClick={() => setValidationError(null)}>
+                                Try Again
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

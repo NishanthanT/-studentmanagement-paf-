@@ -1,21 +1,64 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationService } from '../../services/notification.service';
+import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 const NotificationBell = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const lastUnreadCount = useRef(0);
     const navigate = useNavigate();
+    const { showToast } = useToast();
+    const { user } = useAuth();
+
+    const getDynamicColor = (msg) => {
+        const message = msg.toLowerCase();
+        if (message.includes('rejected')) return 'border-rose-500/50 bg-rose-50/20';
+        if (message.includes('approved') || message.includes('resolved')) return 'border-emerald-500/50 bg-emerald-50/20';
+        return 'border-blue-500/50 bg-blue-50/20';
+    };
 
     const fetchUnreadCount = async () => {
         try {
             const count = await notificationService.getUnreadCount();
+            
+            // If new notification detected, trigger toast
+            if (count > lastUnreadCount.current) {
+                const latestData = await notificationService.getNotifications();
+                if (latestData.length > 0) {
+                    const latest = latestData[0];
+                    const type = getNotifType(latest.message);
+                    const link = getNotifLink(latest.message);
+                    showToast(latest.message, type, link);
+                }
+            }
+            
             setUnreadCount(count);
+            lastUnreadCount.current = count;
         } catch (err) {
             console.error('Failed to fetch unread count');
         }
+    };
+
+    const getNotifType = (msg) => {
+        const message = msg.toLowerCase();
+        if (message.includes('rejected') || message.includes('failed') || message.includes('urgent')) return 'error';
+        if (message.includes('approved') || message.includes('success') || message.includes('resolved')) return 'success';
+        return 'info';
+    };
+
+    const getNotifLink = (msg) => {
+        const message = msg.toLowerCase();
+        if (message.includes('ticket')) {
+            return user?.role === 'ADMIN' ? '/admin/tickets' : '/tickets/my';
+        }
+        if (message.includes('booking') || message.includes('resource')) {
+            return user?.role === 'ADMIN' ? '/admin/bookings' : '/bookings/my';
+        }
+        return '/notifications';
     };
 
     const fetchNotifications = async () => {
@@ -88,7 +131,7 @@ const NotificationBell = () => {
                         <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Notifications</span>
                         {unreadCount > 0 && (
                             <button 
-                                onClick={async () => { await notificationService.markAllAsRead(); fetchUnreadCount(); fetchNotifications(); }}
+                                onClick={async () => { await notificationService.clearAll(); fetchUnreadCount(); fetchNotifications(); }}
                                 className="text-[10px] font-bold text-blue-500 hover:text-blue-600 uppercase"
                             >
                                 Clear All
@@ -105,8 +148,12 @@ const NotificationBell = () => {
                             notifications.map((notif) => (
                                 <div 
                                     key={notif.id}
-                                    onClick={() => !notif.isRead && handleMarkAsRead(notif.id, { stopPropagation: () => {} })}
-                                    className={`p-4 border-b border-gray-50 dark:border-white/5 last:border-0 cursor-pointer transition-colors ${notif.isRead ? 'opacity-60' : 'bg-blue-50/30 dark:bg-blue-900/10'}`}
+                                    onClick={() => {
+                                        if (!notif.isRead) handleMarkAsRead(notif.id, { stopPropagation: () => {} });
+                                        navigate(getNotifLink(notif.message));
+                                        setIsOpen(false);
+                                    }}
+                                    className={`p-4 border-b border-gray-50 dark:border-white/5 last:border-0 cursor-pointer transition-all hover:bg-gray-100 dark:hover:bg-white/5 ${notif.isRead ? 'opacity-60' : `border-l-4 ${getDynamicColor(notif.message)}`}`}
                                 >
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="space-y-1">
@@ -118,7 +165,7 @@ const NotificationBell = () => {
                                             </span>
                                         </div>
                                         {!notif.isRead && (
-                                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 shadow-glow shadow-blue-500/50"></div>
+                                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 shadow-glow shadow-blue-500/50 animate-pulse"></div>
                                         )}
                                     </div>
                                 </div>

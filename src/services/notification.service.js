@@ -26,5 +26,10 @@ export const notificationService = {
     markAllAsRead: async () => {
         const response = await axios.put(`${API_URL}/notifications/read-all`, {}, { headers: getAuthHeader() });
         return response.data;
+    },
+    
+    clearAll: async () => {
+        const response = await axios.delete(`${API_URL}/notifications/clear-all`, { headers: getAuthHeader() });
+        return response.data;
     }
 };
