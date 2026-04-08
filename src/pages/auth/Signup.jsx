@@ -14,13 +14,20 @@ const Signup = () => {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState({});
+  const [validationModal, setValidationModal] = useState(null);
 
   const validate = () => {
     const newErrors = {};
     if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!formData.email) newErrors.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    if (!formData.phoneNumber) newErrors.phoneNumber = 'Phone number is required';
+    
+    const phoneRegex = /^\d{3}-\d{4}-\d{3}$/;
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!phoneRegex.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = 'Phone number must be exactly 10 digits in XXX-XXXX-XXX format';
+    }
     
     const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_\-])[A-Za-z\d@$!%*?&#_\-]{8,}$/;
     
@@ -36,9 +43,22 @@ const Signup = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: null });
+    let { name, value } = e.target;
+    
+    if (name === 'phoneNumber') {
+      const digits = value.replace(/\D/g, '');
+      if (digits.length <= 3) {
+          value = digits;
+      } else if (digits.length <= 7) {
+          value = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      } else {
+          value = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 10)}`;
+      }
+    }
+
+    setFormData({ ...formData, [name]: value });
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: null });
     }
   };
 
@@ -47,6 +67,7 @@ const Signup = () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      setValidationModal(Object.values(validationErrors)[0]);
       return;
     }
     
@@ -147,6 +168,24 @@ const Signup = () => {
           </div>
         </form>
       </div>
+
+      {/* Validation Modal Popup */}
+      {validationModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="glass-card max-w-sm w-full p-8 shadow-2xl space-y-6 transform scale-100 animate-slide-up border-rose-500/30">
+                <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <h3 className="text-xl font-black text-center text-gray-900 dark:text-white">Validation Error</h3>
+                <p className="text-center text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">{validationModal}</p>
+                <div className="pt-4">
+                    <Button className="w-full bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20" onClick={() => setValidationModal(null)}>
+                        Okay
+                    </Button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,9 +5,7 @@ import { ToastProvider } from './context/ToastContext';
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <AppRoutes />
-      </ToastProvider>
+      <AppRoutes />
     </AuthProvider>
   )
 }

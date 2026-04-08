@@ -31,10 +31,17 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-10 animate-fade-in text-gray-900 dark:text-gray-100 pb-10">
+    <div className="space-y-10 animate-fade-in text-gray-900 dark:text-gray-100 pb-10 relative">
+      {/* Page Ambient Background Orbs */}
+      <div className="absolute top-10 left-0 w-96 h-96 bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-[100px] animate-pulse-glow pointer-events-none -z-10"></div>
+      <div className="absolute top-[40%] right-0 w-[30rem] h-[30rem] bg-indigo-500/10 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-glow [animation-delay:4s] pointer-events-none -z-10"></div>
+
       {/* Overview Card */}
       <div className="glass-card p-8 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 dark:bg-blue-400/5 rounded-full -mr-20 -mt-20 blur-3xl opacity-50 group-hover:scale-110 transition-transform duration-700"></div>
+        {/* Animated Background Blots */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 dark:bg-blue-400/5 rounded-full -mr-32 -mt-32 blur-[100px] animate-pulse-glow pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-400/5 rounded-full -ml-24 -mb-24 blur-[80px] animate-pulse-glow [animation-delay:2s] pointer-events-none"></div>
+        
         <div className="relative z-10">
           <div className="flex justify-between items-start">
             <div>

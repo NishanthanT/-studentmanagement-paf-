@@ -30,32 +30,34 @@ const TicketDetails = () => {
     const [submittingComment, setSubmittingComment] = useState(false);
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editText, setEditText] = useState('');
+    const [deleteCommentId, setDeleteCommentId] = useState(null);
+    const [viewImage, setViewImage] = useState(null);
 
-    const fetchTicket = async () => {
+    const fetchTicket = async (showLoader = true) => {
         try {
-            setLoading(true);
+            if (showLoader) setLoading(true);
             const data = await ticketService.getTicketById(id);
             setTicket(data);
         } catch (err) {
             console.error('Failed to fetch ticket details');
         } finally {
-            setLoading(false);
+            if (showLoader) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchTicket();
+        fetchTicket(true);
     }, [id]);
 
     const handleAddComment = async (e) => {
         e.preventDefault();
-        if (!commentText.trim()) return;
+        if (!commentText.trim() || submittingComment) return;
 
         try {
             setSubmittingComment(true);
             await ticketService.addComment(id, { commentText });
             setCommentText('');
-            fetchTicket();
+            await fetchTicket(false);
         } catch (err) {
             console.error('Failed to add comment');
         } finally {
@@ -63,14 +65,19 @@ const TicketDetails = () => {
         }
     };
 
-    const handleDeleteComment = async (commentId) => {
-        if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    const confirmDelete = async () => {
+        if (!deleteCommentId) return;
         try {
-            await ticketService.deleteComment(commentId);
-            fetchTicket();
+            await ticketService.deleteComment(deleteCommentId);
+            setDeleteCommentId(null);
+            await fetchTicket(false);
         } catch (err) {
             console.error('Failed to delete comment');
         }
+    };
+
+    const handleDeleteClick = (commentId) => {
+        setDeleteCommentId(commentId);
     };
 
     const startEditing = (comment) => {
@@ -82,10 +89,24 @@ const TicketDetails = () => {
         try {
             await ticketService.editComment(commentId, { commentText: editText });
             setEditingCommentId(null);
-            fetchTicket();
+            await fetchTicket(false);
         } catch (err) {
             console.error('Failed to edit comment');
         }
+    };
+
+    const getImageUrl = (file) => {
+        if (!file) return '';
+        const path = typeof file === 'string' ? file : (file.filePath || file.url || file.imageUrl || '');
+        if (!path) return '';
+        const normalizedPath = path.replace(/\\/g, '/');
+        if (normalizedPath.startsWith('http')) return normalizedPath;
+        return `http://localhost:8080/${normalizedPath.startsWith('/') ? normalizedPath.slice(1) : normalizedPath}`;
+    };
+
+    const getFileName = (file, index) => {
+        if (!file) return `Attachment ${index + 1}`;
+        return typeof file === 'string' ? `Attachment ${index + 1}` : (file.fileName || `Attachment ${index + 1}`);
     };
 
     if (loading) return <div className="p-20 text-center animate-pulse text-gray-500 font-bold">In-depth inspection in progress...</div>;
@@ -162,18 +183,26 @@ const TicketDetails = () => {
                             </div>
 
                             {/* Attachments Gallery */}
-                            {ticket.attachments && ticket.attachments.length > 0 && (
+                            {ticket.attachments && Array.isArray(ticket.attachments) && ticket.attachments.length > 0 && (
                                 <div className="pt-10 border-t border-gray-100 dark:border-gray-800">
                                     <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-6">Attachments</h4>
                                     <div className="flex flex-wrap gap-6">
-                                        {ticket.attachments.map((file, index) => (
-                                            <div key={index} className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white dark:border-gray-800 shadow-xl group cursor-pointer relative">
-                                                <img src={`http://localhost:8080/${file.filePath}`} alt={file.fileName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        {ticket.attachments.map((file, index) => {
+                                            const url = getImageUrl(file);
+                                            if (!url) return null;
+                                            return (
+                                                <div 
+                                                    key={index} 
+                                                    onClick={() => setViewImage(url)}
+                                                    className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white dark:border-gray-800 shadow-xl group cursor-pointer relative"
+                                                >
+                                                    <img src={url} alt={getFileName(file, index)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -225,7 +254,7 @@ const TicketDetails = () => {
                                         {comment.userId === currentUser?.id && editingCommentId !== comment.id && (
                                             <div className="flex gap-4 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => startEditing(comment)} className="text-[10px] font-bold text-blue-500 uppercase tracking-widest hover:text-blue-600">Edit</button>
-                                                <button onClick={() => handleDeleteComment(comment.id)} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest hover:text-rose-600">Delete</button>
+                                                <button onClick={() => handleDeleteClick(comment.id)} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest hover:text-rose-600">Delete</button>
                                             </div>
                                         )}
                                     </div>
@@ -245,7 +274,7 @@ const TicketDetails = () => {
                                 <button 
                                     type="submit"
                                     disabled={submittingComment}
-                                    className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 transition-all p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl"
+                                    className="absolute bottom-4 right-4 z-20 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 transition-all p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                                 </button>
@@ -308,6 +337,49 @@ const TicketDetails = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Custom Modals */}
+            {/* Delete Confirmation Modal */}
+            {deleteCommentId && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="glass-card max-w-sm w-full p-8 shadow-2xl space-y-6 transform scale-100 animate-slide-up border-rose-500/30">
+                        <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-center text-gray-900 dark:text-white">Delete Comment?</h3>
+                        <p className="text-center text-gray-600 dark:text-gray-400 text-sm font-medium">This action cannot be undone. Are you completely sure?</p>
+                        <div className="flex gap-4 pt-4">
+                            <Button className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700" onClick={() => setDeleteCommentId(null)}>
+                                Cancel
+                            </Button>
+                            <Button className="flex-1 bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20" onClick={confirmDelete}>
+                                Delete
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Image Viewer Lightbox */}
+            {viewImage && (
+                <div 
+                    className="fixed inset-0 z-[150] flex items-center justify-center p-4 md:p-10 bg-black/90 backdrop-blur-md animate-fade-in cursor-pointer"
+                    onClick={() => setViewImage(null)}
+                >
+                    <button 
+                        className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-3 transition-all transform hover:scale-110 z-50"
+                        onClick={() => setViewImage(null)}
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    <img 
+                        src={viewImage} 
+                        alt="Enlarged view" 
+                        className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl shadow-black/50 animate-scale-up" 
+                        onClick={(e) => e.stopPropagation()} 
+                    />
+                </div>
+            )}
         </div>
     );
 };

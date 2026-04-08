@@ -4,10 +4,10 @@ const Button = ({ children, variant = 'primary', type = 'button', className = ''
   const baseStyle = "w-full py-3.5 px-6 rounded-xl font-bold transition-all duration-300 flex justify-center items-center active:scale-95 hover:scale-[1.02] transform-gpu disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100";
   
   const variants = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30",
-    secondary: "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-md",
-    outline: "border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 text-gray-700 dark:text-gray-200 backdrop-blur-sm",
-    danger: "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30"
+    primary: "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 bg-[length:200%_auto] hover:bg-[position:100%_0] text-white shadow-lg shadow-blue-500/30",
+    secondary: "bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 bg-[length:200%_auto] hover:bg-[position:100%_0] text-gray-800 dark:text-gray-200 shadow-md",
+    outline: "border-2 border-blue-500/50 hover:border-blue-500 text-blue-600 dark:text-blue-400 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent bg-[length:200%_auto] hover:bg-[position:100%_0] backdrop-blur-sm",
+    danger: "bg-gradient-to-r from-red-500 via-rose-600 to-red-500 bg-[length:200%_auto] hover:bg-[position:100%_0] text-white shadow-lg shadow-red-500/30"
   };
 
   return (

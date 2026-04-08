@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ActionBadge = ({ action }) => {
     const styles = {
@@ -47,6 +49,52 @@ const AdminActivityLogs = () => {
         log.details.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const downloadPDF = () => {
+        const doc = new jsPDF();
+        
+        // Add header
+        doc.setFontSize(20);
+        doc.setTextColor(59, 130, 246); // Blue-600
+        doc.text("SMART CAMPUS OPERATIONS HUB", 14, 22);
+        
+        doc.setFontSize(14);
+        doc.setTextColor(100);
+        doc.text("System Activity Report", 14, 30);
+        
+        doc.setFontSize(10);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 38);
+        doc.text(`Total Records: ${filteredLogs.length}`, 14, 44);
+
+        // Define table data
+        const tableColumn = ["Date & Time", "User", "Activity", "Details"];
+        const tableRows = filteredLogs.map(log => [
+            `${new Date(log.timestamp).toLocaleDateString()} ${new Date(log.timestamp).toLocaleTimeString()}`,
+            `${log.userName} (${log.userEmail})`,
+            log.action.replace('_', ' '),
+            log.details
+        ]);
+
+        // Generate table
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 50,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 10, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 9 },
+            alternateRowStyles: { fillColor: [245, 247, 250] },
+            margin: { top: 50 },
+            didDrawPage: (data) => {
+                // Footer
+                const str = `Page ${doc.internal.getNumberOfPages()}`;
+                doc.setFontSize(10);
+                doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+            }
+        });
+
+        doc.save(`system_logs_${new Date().getTime()}.pdf`);
+    };
+
     return (
         <div className="space-y-8 animate-fade-in max-w-7xl mx-auto pb-20">
             {/* Header Area */}
@@ -68,6 +116,10 @@ const AdminActivityLogs = () => {
                     </div>
                     <button onClick={fetchLogs} className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:text-blue-500 transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+                    <button onClick={downloadPDF} className="px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl shadow-sm border border-red-100 dark:border-red-800 hover:bg-red-600 hover:text-white transition-all duration-300 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export PDF
                     </button>
                 </div>
             </div>

@@ -14,6 +14,7 @@ const StatusIcon = ({ type }) => {
 const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('ALL');
     const navigate = useNavigate();
 
     const fetchNotifications = async () => {
@@ -32,6 +33,13 @@ const Notifications = () => {
         fetchNotifications();
     }, []);
 
+    const filteredNotifications = notifications.filter(notif => {
+        if (filter === 'ALL') return true;
+        if (filter === 'TICKETS') return notif.type.includes('TICKET');
+        if (filter === 'BOOKINGS') return notif.type.includes('BOOKING') || notif.type.includes('RESOURCE');
+        return true;
+    });
+
     const handleMarkAsRead = async (id) => {
         try {
             await notificationService.markAsRead(id);
@@ -43,7 +51,7 @@ const Notifications = () => {
 
     const handleMarkAllRead = async () => {
         try {
-            await notificationService.markAllAsRead();
+            await notificationService.clearAll();
             fetchNotifications();
         } catch (err) {
             console.error('Action failed');
@@ -69,20 +77,41 @@ const Notifications = () => {
                 </div>
                 <button 
                     onClick={handleMarkAllRead}
-                    className="bg-gray-900 dark:bg-white text-white dark:text-gray-950 px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                    className="bg-gray-900 dark:bg-white text-white dark:text-gray-950 px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all"
                 >
                     Clear All
                 </button>
             </div>
 
+            {/* Filter Bar */}
+            <div className="flex flex-wrap gap-3 px-4">
+                {[
+                    { id: 'ALL', label: 'All Activity' },
+                    { id: 'TICKETS', label: 'Tickets' },
+                    { id: 'BOOKINGS', label: 'Bookings' }
+                ].map(item => (
+                    <button
+                        key={item.id}
+                        onClick={() => setFilter(item.id)}
+                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 border ${
+                            filter === item.id 
+                            ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/30 -translate-y-1' 
+                            : 'bg-white/50 dark:bg-gray-800/50 text-gray-500 border-gray-100 dark:border-white/5 hover:bg-white dark:hover:bg-gray-700'
+                        }`}
+                    >
+                        {item.label}
+                    </button>
+                ))}
+            </div>
+
             <div className="glass-card overflow-hidden">
                 {loading ? (
                     <div className="p-20 text-center text-gray-400 font-bold animate-pulse uppercase tracking-[0.2em]">Loading notifications...</div>
-                ) : notifications.length === 0 ? (
-                    <div className="p-20 text-center text-gray-400 font-bold italic">No notifications found.</div>
+                ) : filteredNotifications.length === 0 ? (
+                    <div className="p-20 text-center text-gray-400 font-bold italic">No notifications for this category.</div>
                 ) : (
                     <div className="divide-y divide-gray-100 dark:divide-white/5">
-                        {notifications.map((notif) => (
+                        {filteredNotifications.map((notif) => (
                             <div 
                                 key={notif.id}
                                 className={`p-6 flex items-start gap-6 transition-all hover:bg-gray-50/50 dark:hover:bg-white/5 group relative ${notif.isRead ? 'opacity-60' : ''}`}
@@ -110,8 +139,8 @@ const Notifications = () => {
                                         </button>
                                         {!notif.isRead && (
                                             <button 
-                                                onClick={() => handleMarkAsRead(notif.id)}
-                                                className="text-[10px] font-black text-gray-400 hover:text-gray-600 uppercase tracking-widest transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
+                                                className="text-[10px] font-black text-gray-400 hover:text-rose-500 uppercase tracking-widest transition-colors p-1"
                                             >
                                                 Dismiss
                                             </button>

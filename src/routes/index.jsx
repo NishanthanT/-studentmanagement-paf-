@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from '../context/ToastContext';
 import MainLayout from '../layouts/MainLayout';
 import GlobalBackButton from '../components/common/GlobalBackButton';
 import Dashboard from '../pages/Dashboard';
@@ -28,8 +29,9 @@ import MyBookings from '../pages/resource/MyBookings';
 const AppRoutes = () => {
   return (
     <Router>
-      <GlobalBackButton />
-      <Routes>
+      <ToastProvider>
+        <GlobalBackButton />
+        <Routes>
         {/* Public Auth Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -116,6 +118,7 @@ const AppRoutes = () => {
         {/* Catch-all route mapping to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ToastProvider>
     </Router>
   );
 };
