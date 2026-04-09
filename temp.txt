@@ -1,0 +1,1 @@
+..\..\PAF\smart-campus-operations-hub\backend\src\main\java\com\smartcampus\hub\security\SecurityConfig.java

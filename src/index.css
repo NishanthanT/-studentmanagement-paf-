@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 
+  Modern Enterprise Design Tokens
+  Font Families: Inter (Body), Outfit (Headings)
+*/
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: 'Outfit', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    @apply antialiased text-slate-900 bg-slate-50 dark:text-slate-100 dark:bg-slate-950;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight font-bold;
+  }
+
+  button {
+    --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    --animate-shimmer: shimmer 2s infinite linear;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0) 0%, 
+      rgba(255, 255, 255, 0.05) 50%, 
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 1000px 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  .noise-overlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0.2;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply select-none;
+  }
+}
+
+/* Custom Keyframes */
+@keyframes bg-transfer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@layer components {
+  /* High-End Glassmorphism */
+  .glass-card {
+    @apply bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-slate-800/50 shadow-sm;
+    transition: all 0.3s ease;
+  }
+
+  .glass-panel-heavy {
+    @apply bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl border border-slate-200/50 dark:border-white/5 shadow-2xl;
+  }
+
+  /* Trending Input Design */
+  .modern-input {
+    @apply bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 outline-none transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium;
+  }
+
+  /* Pro Badges */
+  .pro-badge {
+    @apply px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all;
+  }
+
+  /* Real-World Table Styles */
+  .enterprise-table-row {
+    @apply hover:bg-slate-500/5 transition-colors duration-150 border-b border-slate-100 dark:border-slate-900;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-scale-up {
+    animation: scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .bg-animate-gradient {
+    background-size: 200% 200%;
+    animation: bg-transfer 8s linear infinite;
+  }
+  
+  /* Alignment Helpers */
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+  .absolute-center {
+    @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 dark:bg-slate-800 rounded-full hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors;
+}
+
+/* Recharts Customization Overlay */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  @apply stroke-slate-100 dark:stroke-slate-800;
+}
