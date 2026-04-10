@@ -39,5 +39,26 @@ export const resourceService = {
     deleteResource: async (id) => {
         const response = await axios.delete(`${API_URL}admin/resources/${id}`, getAuthHeaders());
         return response.data;
+    },
+
+    // Resource Type APIs
+    getAllResourceTypes: async () => {
+        const response = await axios.get(`${API_URL}admin/resource-types`, getAuthHeaders());
+        return response.data;
+    },
+
+    createResourceType: async (typeData) => {
+        const response = await axios.post(`${API_URL}admin/resource-types`, typeData, getAuthHeaders());
+        return response.data;
+    },
+
+    updateResourceType: async (id, typeData) => {
+        const response = await axios.put(`${API_URL}admin/resource-types/${id}`, typeData, getAuthHeaders());
+        return response.data;
+    },
+
+    deleteResourceType: async (id) => {
+        const response = await axios.delete(`${API_URL}admin/resource-types/${id}`, getAuthHeaders());
+        return response.data;
     }
 };

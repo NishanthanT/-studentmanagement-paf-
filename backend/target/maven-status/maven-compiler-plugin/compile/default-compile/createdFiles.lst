@@ -2,6 +2,7 @@ com\smartcampus\hub\entity\PasswordResetOtp$PasswordResetOtpBuilder.class
 com\smartcampus\hub\controller\BookingController.class
 com\smartcampus\hub\entity\TicketAttachment$TicketAttachmentBuilder.class
 com\smartcampus\hub\dto\response\BookingResponse$BookingResponseBuilder.class
+com\smartcampus\hub\config\WebMvcConfig.class
 com\smartcampus\hub\dto\request\UpdateUserStatusRequest.class
 com\smartcampus\hub\dto\request\ResourceRequest.class
 com\smartcampus\hub\service\UserService.class
