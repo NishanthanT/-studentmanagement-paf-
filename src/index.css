@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Global Button Interactive Matrix */
+@layer base {
+  button {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+    outline: 2px solid transparent;
+    outline-offset: 0px;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    outline-color: rgba(59, 130, 246, 0.5); /* Blue-500 semi-transparent glowing border */
+    outline-offset: 3px;
+    filter: brightness(1.05);
+    box-shadow: 0 8px 20px -5px rgba(0,0,0,0.15);
+  }
+
+  button:active {
+    transform: scale(0.95) translateY(0);
+    outline-color: transparent;
+    outline-offset: 0px;
+  }
+}
+
+/* Reusable Glassmorphism & Interactive Utilities */
+@layer components {
+  .glass-card {
+    @apply bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-white/40 dark:border-gray-700/50 shadow-xl;
+    transition: all 0.5s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; right: -2px; bottom: -2px;
+    background: linear-gradient(45deg, rgba(59,130,246,0.2), rgba(139,92,246,0.2), rgba(59,130,246,0.2));
+    z-index: -1;
+    border-radius: inherit;
+    background-size: 200% 200%;
+    animation: bgTransfer 5s ease infinite;
+    opacity: 0;
+    transition: opacity 0.5s fade;
+  }
+
+  .glass-card:hover::before {
+    opacity: 1;
+  }
+
+  .interactive-box {
+    @apply hover:shadow-2xl hover:-translate-y-1 hover:border-blue-400/50 dark:hover:border-blue-500/50 transition-all duration-300;
+  }
+
+  .modern-input {
+    @apply bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-gray-900 dark:text-gray-100 outline-none backdrop-blur-sm;
+    transition: all 0.5s ease;
+    background-size: 200% 200%;
+  }
+
+  .modern-input:focus {
+    @apply border-blue-500 dark:border-blue-400;
+    background-image: linear-gradient(120deg, rgba(59,130,246,0.05), rgba(139,92,246,0.1), rgba(59,130,246,0.05));
+    animation: bgTransfer 3s ease infinite;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .glow-on-hover {
+    @apply relative overflow-hidden;
+  }
+
+  .glow-on-hover::after {
+    @apply content-[''] absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 opacity-0 pointer-events-none transition-opacity duration-300;
+  }
+
+  .glow-on-hover:hover::after {
+    @apply opacity-100;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+  .bg-animate-gradient {
+    background-size: 200% 200%;
+    animation: bgTransfer 6s ease infinite;
+  }
+  .animate-tilt {
+    animation: tilt 10s infinite linear;
+  }
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  .animate-slide-in-down {
+    animation: slideInDown 0.4s ease-out forwards;
+  }
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+}
+
+@keyframes tilt {
+  0%, 50%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(1deg);
+  }
+  75% {
+    transform: rotate(-1deg);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+}
+
+@keyframes bgTransfer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes toastProgress {
+  0% { width: 100%; }
+  100% { width: 0%; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-toast-progress {
+  animation: toastProgress 5s linear forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 8s ease-in-out infinite;
+}
+
+
