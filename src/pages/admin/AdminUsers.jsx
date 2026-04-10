@@ -3,15 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
+import UserDetailedDrawer from '../../components/admin/UserDetailedDrawer';
 
-const ActionModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText, isDanger }) => {
+const ActionModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText, isDanger, reason, setReason, showReasonField }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-md px-4 transition-all animate-fade-in">
       <div className="glass-card max-w-md w-full p-8 shadow-2xl border-white/20 relative overflow-hidden">
         <div className={`absolute top-0 left-0 w-full h-1.5 ${isDanger ? 'bg-red-500' : 'bg-blue-500'}`}></div>
         <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">{title}</h3>
-        <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed font-medium">{message}</p>
+        <p className={`text-gray-500 dark:text-gray-400 ${showReasonField ? 'mb-4' : 'mb-8'} leading-relaxed font-medium`}>{message}</p>
+        
+        {showReasonField && (
+           <div className="mb-8">
+             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Reason for Deletion</label>
+             <textarea 
+               className="modern-input w-full min-h-[80px] p-3 text-sm resize-none" 
+               placeholder="Please enter the reason (sent to user via email)..."
+               value={reason}
+               onChange={(e) => setReason(e.target.value)}
+             ></textarea>
+           </div>
+        )}
         <div className="flex justify-end space-x-3">
           <button onClick={onCancel} className="px-6 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all">
             Cancel
@@ -36,6 +49,8 @@ const AdminUsers = () => {
   
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   const [modalConfig, setModalConfig] = useState({ isOpen: false, type: null, targetUser: null, targetValue: null });
+  const [deleteReason, setDeleteReason] = useState('');
+  const [drawerConfig, setDrawerConfig] = useState({ isOpen: false, userId: null });
 
   const fetchUsers = async () => {
     try {
@@ -71,7 +86,10 @@ const AdminUsers = () => {
     setModalConfig({ isOpen: true, type, targetUser, targetValue });
   };
 
-  const closeModal = () => setModalConfig({ isOpen: false, type: null, targetUser: null, targetValue: null });
+  const closeModal = () => {
+     setModalConfig({ isOpen: false, type: null, targetUser: null, targetValue: null });
+     setDeleteReason('');
+  };
 
   const executeAction = async () => {
     const { type, targetUser, targetValue } = modalConfig;
@@ -86,7 +104,7 @@ const AdminUsers = () => {
         const res = await adminService.updateStatus(targetUser.id, targetValue);
         showAlert(res.message);
       } else if (type === 'DELETE') {
-        const res = await adminService.deleteUser(targetUser.id);
+        const res = await adminService.deleteUser(targetUser.id, deleteReason);
         showAlert(res.message);
       }
       fetchUsers();
@@ -218,13 +236,16 @@ const AdminUsers = () => {
                 users.map((user) => (
                   <tr key={user.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-700/50 transition-colors group">
                     <td className="px-8 py-5 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-100 font-bold shadow-inner border border-blue-50 dark:border-blue-700 text-lg">
+                      <div 
+                        className="flex items-center cursor-pointer group"
+                        onClick={() => setDrawerConfig({ isOpen: true, userId: user.id })}
+                      >
+                        <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-100 font-bold shadow-inner border border-blue-50 dark:border-blue-700 text-lg group-hover:scale-105 transition-transform">
                           {user.fullName.charAt(0).toUpperCase()}
                         </div>
                         <div className="ml-5">
                           <div className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{user.fullName}</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 font-medium mt-0.5">Joined {new Date(user.createdAt).toLocaleDateString()}</div>
+                          <div className="text-xs text-blue-500 dark:text-blue-400 font-medium mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">View Details</div>
                         </div>
                       </div>
                     </td>
@@ -287,8 +308,17 @@ const AdminUsers = () => {
         }
         confirmText={modalConfig.type === 'DELETE' ? 'Remove' : 'Save Changes'}
         isDanger={modalConfig.type === 'DELETE'}
+        showReasonField={modalConfig.type === 'DELETE'}
+        reason={deleteReason}
+        setReason={setDeleteReason}
         onCancel={closeModal}
         onConfirm={executeAction}
+      />
+
+      <UserDetailedDrawer 
+        isOpen={drawerConfig.isOpen}
+        userId={drawerConfig.userId}
+        onClose={() => setDrawerConfig({ isOpen: false, userId: null })}
       />
     </div>
   );

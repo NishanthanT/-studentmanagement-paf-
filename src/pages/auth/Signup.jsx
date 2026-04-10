@@ -80,7 +80,12 @@ const Signup = () => {
       });
       navigate('/login');
     } catch (err) {
-      setErrors({ apiError: err.response?.data?.message || 'Failed to sign up. Ensure backend is running and email is unique.' });
+      const backendMessage = err.response?.data?.message || '';
+      if (backendMessage.toLowerCase().includes('email is already registered') || backendMessage.toLowerCase().includes('already exists')) {
+        setErrors({ apiError: 'Email already exists. Please use another email to sign up.' });
+      } else {
+        setErrors({ apiError: backendMessage || 'Failed to sign up. Ensure backend is running and email is unique.' });
+      }
     }
   };
 
