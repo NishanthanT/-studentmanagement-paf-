@@ -19,11 +19,12 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<List<NotificationResponse>> getUserNotifications(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<NotificationResponse>> getUserNotifications(
+            @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(notificationService.getUserNotifications(userDetails.getUsername()));
     }
 
-    @GetMapping("/unread-count")
+    @GetMapping({ "/unread-count", "/unread_count" })
     public ResponseEntity<Long> getUnreadCount(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(notificationService.getUnreadCount(userDetails.getUsername()));
     }

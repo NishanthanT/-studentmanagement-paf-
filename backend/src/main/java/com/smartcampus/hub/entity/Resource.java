@@ -40,6 +40,18 @@ public class Resource {
     @Column(nullable = false)
     private ResourceStatus status;
 
+    @Column(name = "start_time")
+    private String startDate;
+
+    @Column(name = "end_time")
+    private String endDate;
+
+    @Column(name = "every_day")
+    private Boolean everyDay;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

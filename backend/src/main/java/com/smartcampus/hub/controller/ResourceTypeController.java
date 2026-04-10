@@ -11,8 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/admin/resource-types")
-@PreAuthorize("hasRole('ADMIN')")
+@RequestMapping("/api/v1/resource-types")
 public class ResourceTypeController {
 
     private final ResourceTypeService resourceTypeService;
@@ -32,16 +31,19 @@ public class ResourceTypeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ResourceType> createResourceType(@RequestBody ResourceType resourceType) {
         return new ResponseEntity<>(resourceTypeService.createResourceType(resourceType), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ResourceType> updateResourceType(@PathVariable Long id, @RequestBody ResourceType resourceType) {
         return ResponseEntity.ok(resourceTypeService.updateResourceType(id, resourceType));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> deleteResourceType(@PathVariable Long id) {
         resourceTypeService.deleteResourceType(id);
         return ResponseEntity.ok(Map.of("message", "Resource type deleted successfully"));

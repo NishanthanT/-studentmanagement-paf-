@@ -19,5 +19,9 @@ public class ResourceResponse {
     private String location;
     private String availabilityWindow;
     private ResourceStatus status;
+    private String startDate;
+    private String endDate;
+    private Boolean everyDay;
+    private String imageUrl;
     private LocalDateTime createdAt;
 }
