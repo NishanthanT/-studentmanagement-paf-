@@ -38,6 +38,7 @@ public class ResourceTypeServiceImpl implements ResourceTypeService {
         ResourceType existingType = getResourceTypeById(id);
         existingType.setName(resourceType.getName());
         existingType.setDescription(resourceType.getDescription());
+        existingType.setLocations(resourceType.getLocations());
         return resourceTypeRepository.save(existingType);
     }
 

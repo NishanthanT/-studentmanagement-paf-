@@ -25,14 +25,17 @@ public class ResourceServiceImpl implements ResourceService {
     private final ResourceRepository resourceRepository;
     private final com.smartcampus.hub.repository.UserRepository userRepository;
     private final com.smartcampus.hub.service.ActivityLogService activityLogService;
+    private final com.smartcampus.hub.repository.ResourceTypeRepository resourceTypeRepository;
     private static final String RESOURCE_UPLOAD_DIR = "uploads/resources";
 
     public ResourceServiceImpl(ResourceRepository resourceRepository,
             com.smartcampus.hub.repository.UserRepository userRepository,
-            com.smartcampus.hub.service.ActivityLogService activityLogService) {
+            com.smartcampus.hub.service.ActivityLogService activityLogService,
+            com.smartcampus.hub.repository.ResourceTypeRepository resourceTypeRepository) {
         this.resourceRepository = resourceRepository;
         this.userRepository = userRepository;
         this.activityLogService = activityLogService;
+        this.resourceTypeRepository = resourceTypeRepository;
     }
 
     @Override
@@ -137,10 +140,15 @@ public class ResourceServiceImpl implements ResourceService {
     }
 
     private ResourceResponse mapToResponse(Resource resource) {
+        String description = resourceTypeRepository.findByName(resource.getType())
+                .map(com.smartcampus.hub.entity.ResourceType::getDescription)
+                .orElse("");
+
         return ResourceResponse.builder()
                 .id(resource.getId())
                 .name(resource.getName())
                 .type(resource.getType())
+                .typeDescription(description)
                 .capacity(resource.getCapacity())
                 .location(resource.getLocation())
                 .availabilityWindow(resource.getAvailabilityWindow())

@@ -136,7 +136,7 @@ const ResourceList = () => {
         if (res.status !== 'ACTIVE') return { available: false, reason: 'Unavailable' };
 
         const now = new Date();
-        
+
         // 1. Date Range Check
         if (res.startDate && res.endDate) {
             const start = new Date(res.startDate);
@@ -238,9 +238,9 @@ const ResourceList = () => {
                             {/* Card Image Section */}
                             <div className="relative h-48 overflow-hidden bg-gray-100 dark:bg-gray-800">
                                 {res.imageUrl ? (
-                                    <img 
-                                        src={`${IMAGE_BASE_URL}${res.imageUrl}`} 
-                                        alt={res.name} 
+                                    <img
+                                        src={`${IMAGE_BASE_URL}${res.imageUrl}`}
+                                        alt={res.name}
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                     />
                                 ) : (
@@ -272,6 +272,12 @@ const ResourceList = () => {
                                         <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 7h.01M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2h10" /></svg>
                                         <span>Type: {res.type}</span>
                                     </div>
+                                    {res.typeDescription && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
+                                            <span className="font-bold text-gray-700 dark:text-gray-300 block mb-1">Description:</span>
+                                            <span className="italic leading-relaxed">{res.typeDescription}</span>
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                                         <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m16-10a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                         <span>Capacity: {res.capacity} people</span>

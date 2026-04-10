@@ -222,7 +222,30 @@ const ActionModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText,
     );
 };
 
-const EditResourceModal = ({ isOpen, onClose, formData, handleInputChange, handleSubmit, loading, onOpenPicker, resourceTypes, handleImageChange, imagePreview }) => {
+const AlertModal = ({ isOpen, message, onClose }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-md px-4 transition-all animate-fade-in">
+            <div className="glass-card max-w-sm w-full p-8 shadow-2xl border-white/20 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-yellow-500"></div>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-yellow-50 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-500">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <h3 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Attention Required</h3>
+                </div>
+                <p className="text-gray-600 dark:text-gray-300 mb-8 font-medium">{message}</p>
+                <div className="flex justify-end">
+                    <button onClick={onClose} className="px-8 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95">
+                        Got it
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const EditResourceModal = ({ isOpen, onClose, formData, handleInputChange, handleSubmit, loading, onOpenPicker, resourceTypes, handleImageChange, imagePreview, onSetValidationAlert }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-md px-4 transition-all animate-fade-in">
@@ -260,7 +283,12 @@ const EditResourceModal = ({ isOpen, onClose, formData, handleInputChange, handl
                     </div>
                     <div className="space-y-2">
                         <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Location</label>
-                        <input type="text" name="location" required value={formData.location} onChange={handleInputChange} className="modern-input w-full" placeholder="e.g. Block B Level 2" />
+                        <select name="location" required value={formData.location} onChange={handleInputChange} onFocus={() => { if (!formData.type) { onSetValidationAlert('First select asset category!'); } }} className="modern-input w-full cursor-pointer appearance-none pr-10">
+                            <option value="">Select Location</option>
+                            {formData.type && resourceTypes.find(t => t.name === formData.type)?.locations?.map(loc => (
+                                <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="space-y-2">
                         <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Available Time</label>
@@ -336,9 +364,12 @@ const AdminResource = () => {
     });
 
     // Type Manager States
-    const [typeForm, setTypeForm] = useState({ name: '', description: '' });
+    const [typeForm, setTypeForm] = useState({ name: '', description: '', locations: [''] });
     const [editTypeData, setEditTypeData] = useState(null);
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+    
+    // Alerts
+    const [validationAlert, setValidationAlert] = useState(null);
 
     const [editId, setEditId] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -441,8 +472,12 @@ const AdminResource = () => {
     const handleTypeSubmit = async (e) => {
         e.preventDefault();
         try {
-            await resourceService.createResourceType(typeForm);
-            setTypeForm({ name: '', description: '' });
+            const payload = {
+                ...typeForm,
+                locations: typeForm.locations.map(l => l.trim()).filter(Boolean)
+            };
+            await resourceService.createResourceType(payload);
+            setTypeForm({ name: '', description: '', locations: [''] });
             showToast('New resource category added successfully.', 'success');
             fetchResourceTypes();
         } catch (err) {
@@ -453,7 +488,11 @@ const AdminResource = () => {
     const handleTypeUpdate = async (e) => {
         e.preventDefault();
         try {
-            await resourceService.updateResourceType(editTypeData.id, editTypeData);
+            const payload = {
+                ...editTypeData,
+                locations: editTypeData.locations.map(l => l.trim()).filter(Boolean)
+            };
+            await resourceService.updateResourceType(editTypeData.id, payload);
             setIsTypeModalOpen(false);
             showToast('Category updated successfully.', 'success');
             fetchResourceTypes();
@@ -647,7 +686,12 @@ const AdminResource = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Deployment Location</label>
-                                    <input type="text" name="location" required value={formData.location} onChange={handleInputChange} className="modern-input w-full" placeholder="e.g. Block B Level 2" />
+                                    <select name="location" required value={formData.location} onChange={handleInputChange} onFocus={() => { if (!formData.type) { setValidationAlert('First select asset category!'); } }} className="modern-input w-full cursor-pointer appearance-none pr-10">
+                                        <option value="">Select Location</option>
+                                        {formData.type && resourceTypes.find(t => t.name === formData.type)?.locations?.map(loc => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Operating Window</label>
@@ -713,6 +757,32 @@ const AdminResource = () => {
                                         <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Brief Description</label>
                                         <input type="text" value={typeForm.description} onChange={(e) => setTypeForm({ ...typeForm, description: e.target.value })} className="modern-input w-full" placeholder="Optional identifier" />
                                     </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Deployment Locations</label>
+                                        <div className="space-y-3">
+                                            {typeForm.locations.map((loc, idx) => (
+                                                <div key={idx} className="flex gap-3 animate-fade-in">
+                                                    <input type="text" value={loc} onChange={(e) => {
+                                                        const newLocs = [...typeForm.locations];
+                                                        newLocs[idx] = e.target.value;
+                                                        setTypeForm({ ...typeForm, locations: newLocs });
+                                                    }} className="modern-input flex-1" placeholder={`Location ${idx + 1} (e.g. Block A)`} />
+                                                    {typeForm.locations.length > 1 && (
+                                                        <button type="button" onClick={() => {
+                                                            const newLocs = typeForm.locations.filter((_, i) => i !== idx);
+                                                            setTypeForm({ ...typeForm, locations: newLocs });
+                                                        }} className="px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-100 dark:border-red-900/30 font-bold active:scale-95">
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button type="button" onClick={() => setTypeForm({ ...typeForm, locations: [...typeForm.locations, ''] })} className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-blue-700 dark:hover:text-blue-300 transition-colors pt-2">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                                Add Another Location
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="md:col-span-2 flex justify-end">
                                         <button type="submit" className="px-12 py-4 bg-gray-900 dark:bg-blue-600 hover:scale-105 text-white text-sm font-extrabold rounded-2xl shadow-xl active:scale-95 transition-all">
                                             Add Category
@@ -728,6 +798,7 @@ const AdminResource = () => {
                                             <tr>
                                                 <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Category Label</th>
                                                 <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Description</th>
+                                                <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Locations</th>
                                                 <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Operations</th>
                                             </tr>
                                         </thead>
@@ -736,14 +807,21 @@ const AdminResource = () => {
                                                 <tr key={type.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-all group">
                                                     <td className="px-8 py-6 whitespace-nowrap font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">{type.name}</td>
                                                     <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium italic">{type.description || 'No description assigned'}</td>
+                                                    <td className="px-8 py-6 text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                            {type.locations?.length > 0 ? type.locations.map(loc => (
+                                                                <span key={loc} className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded-md shadow-sm border border-blue-100 dark:border-blue-800">{loc}</span>
+                                                            )) : <span className="italic">None</span>}
+                                                        </div>
+                                                    </td>
                                                     <td className="px-8 py-6 whitespace-nowrap text-right text-sm">
-                                                        <button onClick={() => { setEditTypeData(type); setIsTypeModalOpen(true); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
+                                                        <button onClick={() => { setEditTypeData({...type, locations: type.locations?.length > 0 ? type.locations : ['']}); setIsTypeModalOpen(true); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
                                                         <button onClick={() => handleTypeDelete(type.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Delete</button>
                                                     </td>
                                                 </tr>
                                             ))}
                                             {resourceTypes.length === 0 && (
-                                                <tr><td colSpan="3" className="px-8 py-16 text-center text-gray-400 font-medium italic">No custom categories mapped yet.</td></tr>
+                                                <tr><td colSpan="4" className="px-8 py-16 text-center text-gray-400 font-medium italic">No custom categories mapped yet.</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -765,6 +843,12 @@ const AdminResource = () => {
                 onConfirm={confirmDelete}
             />
 
+            <AlertModal
+                isOpen={!!validationAlert}
+                message={validationAlert}
+                onClose={() => setValidationAlert(null)}
+            />
+
             <EditResourceModal
                 isOpen={isEditModalOpen}
                 onClose={() => { setIsEditModalOpen(false); setEditId(null); }}
@@ -776,6 +860,7 @@ const AdminResource = () => {
                 handleImageChange={handleImageChange}
                 imagePreview={editImagePreview}
                 onOpenPicker={(type) => setTimePicker({ isOpen: true, targetType: type })}
+                onSetValidationAlert={setValidationAlert}
             />
 
             {/* Edit Type Modal */}
@@ -792,6 +877,32 @@ const AdminResource = () => {
                             <div className="space-y-2">
                                 <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Brief Description</label>
                                 <input type="text" value={editTypeData.description || ''} onChange={(e) => setEditTypeData({ ...editTypeData, description: e.target.value })} className="modern-input w-full" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Deployment Locations</label>
+                                <div className="space-y-3">
+                                    {(editTypeData.locations || ['']).map((loc, idx) => (
+                                        <div key={idx} className="flex gap-3 animate-fade-in">
+                                            <input type="text" value={loc} onChange={(e) => {
+                                                const newLocs = [...(editTypeData.locations || [''])];
+                                                newLocs[idx] = e.target.value;
+                                                setEditTypeData({ ...editTypeData, locations: newLocs });
+                                            }} className="modern-input flex-1" placeholder={`Location ${idx + 1}`} />
+                                            {(editTypeData.locations || ['']).length > 1 && (
+                                                <button type="button" onClick={() => {
+                                                    const newLocs = editTypeData.locations.filter((_, i) => i !== idx);
+                                                    setEditTypeData({ ...editTypeData, locations: newLocs });
+                                                }} className="px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-100 dark:border-red-900/30 font-bold active:scale-95">
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={() => setEditTypeData({ ...editTypeData, locations: [...(editTypeData.locations || ['']), ''] })} className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-blue-700 dark:hover:text-blue-300 transition-colors pt-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                        Add Another Location
+                                    </button>
+                                </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-6">
                                 <button type="button" onClick={() => setIsTypeModalOpen(false)} className="px-6 py-2.5 text-sm font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 transition-all">Cancel</button>
