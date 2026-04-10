@@ -27,4 +27,8 @@ public class ResourceRequest {
 
     @NotNull(message = "Status is required")
     private ResourceStatus status;
+
+    private String startDate;
+    private String endDate;
+    private Boolean everyDay;
 }

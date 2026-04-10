@@ -9,7 +9,14 @@ import com.smartcampus.hub.service.ResourceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,10 +25,11 @@ public class ResourceServiceImpl implements ResourceService {
     private final ResourceRepository resourceRepository;
     private final com.smartcampus.hub.repository.UserRepository userRepository;
     private final com.smartcampus.hub.service.ActivityLogService activityLogService;
+    private static final String RESOURCE_UPLOAD_DIR = "uploads/resources";
 
-    public ResourceServiceImpl(ResourceRepository resourceRepository, 
-                               com.smartcampus.hub.repository.UserRepository userRepository,
-                               com.smartcampus.hub.service.ActivityLogService activityLogService) {
+    public ResourceServiceImpl(ResourceRepository resourceRepository,
+            com.smartcampus.hub.repository.UserRepository userRepository,
+            com.smartcampus.hub.service.ActivityLogService activityLogService) {
         this.resourceRepository = resourceRepository;
         this.userRepository = userRepository;
         this.activityLogService = activityLogService;
@@ -29,7 +37,12 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional
-    public ResourceResponse createResource(ResourceRequest request) {
+    public ResourceResponse createResource(ResourceRequest request, MultipartFile image) {
+        String imageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            imageUrl = saveImage(image);
+        }
+
         Resource resource = Resource.builder()
                 .name(request.getName())
                 .type(request.getType())
@@ -37,8 +50,12 @@ public class ResourceServiceImpl implements ResourceService {
                 .location(request.getLocation())
                 .availabilityWindow(request.getAvailabilityWindow())
                 .status(request.getStatus())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .everyDay(request.getStartDate() == null)
+                .imageUrl(imageUrl)
                 .build();
-        
+
         resource = resourceRepository.save(resource);
         logActivity("RESOURCE_CREATED", "Created resource: " + resource.getName() + " (" + resource.getType() + ")");
         return mapToResponse(resource);
@@ -46,9 +63,14 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional
-    public ResourceResponse updateResource(Long id, ResourceRequest request) {
+    public ResourceResponse updateResource(Long id, ResourceRequest request, MultipartFile image) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + id));
+
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = saveImage(image);
+            resource.setImageUrl(imageUrl);
+        }
 
         resource.setName(request.getName());
         resource.setType(request.getType());
@@ -56,6 +78,9 @@ public class ResourceServiceImpl implements ResourceService {
         resource.setLocation(request.getLocation());
         resource.setAvailabilityWindow(request.getAvailabilityWindow());
         resource.setStatus(request.getStatus());
+        resource.setStartDate(request.getStartDate());
+        resource.setEndDate(request.getEndDate());
+        resource.setEveryDay(request.getStartDate() == null);
 
         resource = resourceRepository.save(resource);
         logActivity("RESOURCE_UPDATED", "Updated resource ID " + id + ": " + resource.getName());
@@ -72,9 +97,11 @@ public class ResourceServiceImpl implements ResourceService {
     }
 
     private void logActivity(String action, String details) {
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
-            String email = ((org.springframework.security.core.userdetails.UserDetails) auth.getPrincipal()).getUsername();
+            String email = ((org.springframework.security.core.userdetails.UserDetails) auth.getPrincipal())
+                    .getUsername();
             userRepository.findByEmail(email).ifPresent(user -> activityLogService.log(user, action, details));
         }
     }
@@ -103,7 +130,7 @@ public class ResourceServiceImpl implements ResourceService {
         } else {
             resources = resourceRepository.findAll();
         }
-        
+
         return resources.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -118,7 +145,32 @@ public class ResourceServiceImpl implements ResourceService {
                 .location(resource.getLocation())
                 .availabilityWindow(resource.getAvailabilityWindow())
                 .status(resource.getStatus())
+                .startDate(resource.getStartDate())
+                .endDate(resource.getEndDate())
+                .everyDay(resource.getEveryDay())
+                .imageUrl(resource.getImageUrl())
                 .createdAt(resource.getCreatedAt())
                 .build();
+    }
+
+    private String saveImage(MultipartFile file) {
+        try {
+            Path root = Paths.get(RESOURCE_UPLOAD_DIR);
+            if (!Files.exists(root)) {
+                Files.createDirectories(root);
+            }
+
+            String originalFileName = file.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFileName != null && originalFileName.contains(".")) {
+                fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            }
+            String fileName = UUID.randomUUID().toString() + fileExtension;
+            Files.copy(file.getInputStream(), root.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+
+            return RESOURCE_UPLOAD_DIR + "/" + fileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not store image. Error: " + e.getMessage());
+        }
     }
 }
