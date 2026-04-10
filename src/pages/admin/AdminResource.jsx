@@ -18,9 +18,11 @@ const formatTime = (time24) => {
     return `${hours12}:${minutes} ${ampm}`;
 };
 
-const formatWindow = (date, start, end) => {
-    if (!date || !start || !end) return '';
-    return `${date} | ${formatTime(start)} - ${formatTime(end)}`;
+const formatWindow = (startDate, endDate, startTime, endTime) => {
+    if (!startTime || !endTime) return '';
+    const timeStr = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+    if (!startDate || !endDate) return `Every Day | ${timeStr}`;
+    return `${startDate} to ${endDate} | ${timeStr}`;
 };
 
 const parseTime12to24 = (time12) => {
@@ -33,42 +35,51 @@ const parseTime12to24 = (time12) => {
     return `${h.toString().padStart(2, '0')}:${minutes}`;
 };
 
-const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
-    const [date, setDate] = useState('');
-    const [start, setStart] = useState('');
-    const [end, setEnd] = useState('');
+const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialData }) => {
+    const [isEveryDay, setIsEveryDay] = useState(true);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [start, setStart] = useState('08:00');
+    const [end, setEnd] = useState('17:00');
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (isOpen && initialValue) {
-            try {
-                const parts = initialValue.split(' | ');
-                if (parts.length === 2) {
-                    setDate(parts[0]);
-                    const times = parts[1].split(' - ');
-                    if (times.length === 2) {
-                        setStart(parseTime12to24(times[0]));
-                        setEnd(parseTime12to24(times[1]));
-                    }
+        if (isOpen) {
+            if (initialData && initialData.startTime) {
+                setStart(initialData.startTime.substring(0, 5));
+                setEnd(initialData.endTime.substring(0, 5));
+                if (initialData.availableStartDate && initialData.availableEndDate) {
+                    setIsEveryDay(false);
+                    setStartDate(initialData.availableStartDate);
+                    setEndDate(initialData.availableEndDate);
+                } else {
+                    setIsEveryDay(true);
+                    setStartDate('');
+                    setEndDate('');
                 }
-            } catch (err) {
-                console.error("Failed to parse initial time value:", err);
-                setDate(new Date().toISOString().split('T')[0]);
+            } else {
                 setStart('08:00');
                 setEnd('17:00');
+                setIsEveryDay(true);
+                setStartDate('');
+                setEndDate('');
             }
-        } else if (isOpen) {
-            setDate(new Date().toISOString().split('T')[0]);
-            setStart('08:00');
-            setEnd('17:00');
         }
-    }, [isOpen, initialValue]);
+    }, [isOpen, initialData]);
 
     if (!isOpen) return null;
 
     const handleSave = () => {
-        if (!date || !start || !end) {
-            setError('Please fill in all fields.');
+        if (!isEveryDay && (!startDate || !endDate)) {
+            setError('Please set the date range or select "Every Day".');
+            return;
+        }
+        if (!isEveryDay && (startDate > endDate)) {
+            setError('End date must be after start date.');
+            return;
+        }
+        if (!start || !end) {
+            setError('Please set the operation times.');
             return;
         }
         if (start >= end) {
@@ -76,7 +87,13 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
             return;
         }
         setError('');
-        onSet(formatWindow(date, start, end));
+        onSet({
+            availableStartDate: isEveryDay ? null : startDate,
+            availableEndDate: isEveryDay ? null : endDate,
+            startTime: start,
+            endTime: end,
+            displayString: formatWindow(isEveryDay ? null : startDate, isEveryDay ? null : endDate, start, end)
+        });
         onClose();
     };
 
@@ -97,18 +114,52 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Select Date</label>
-                        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="modern-input w-full" />
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                        <div>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">Operation Frequency</p>
+                            <p className="text-[10px] text-gray-500 font-medium">Toggle for perpetual daily availability</p>
+                        </div>
+                        <button 
+                            type="button"
+                            onClick={() => setIsEveryDay(!isEveryDay)}
+                            className={`w-14 h-7 rounded-full transition-all relative ${isEveryDay ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                        >
+                            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${isEveryDay ? 'left-8' : 'left-1'}`}></div>
+                        </button>
                     </div>
+
+                    {!isEveryDay && (
+                        <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Start Date</label>
+                                <input 
+                                    type="date" 
+                                    value={startDate} 
+                                    min={new Date().toLocaleDateString('en-CA')}
+                                    onChange={(e) => setStartDate(e.target.value)} 
+                                    className="modern-input w-full" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">End Date</label>
+                                <input 
+                                    type="date" 
+                                    value={endDate} 
+                                    min={startDate || new Date().toLocaleDateString('en-CA')}
+                                    onChange={(e) => setEndDate(e.target.value)} 
+                                    className="modern-input w-full" 
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Start Time</label>
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Daily Start Time</label>
                             <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="modern-input w-full" />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">End Time</label>
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Daily End Time</label>
                             <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="modern-input w-full" />
                         </div>
                     </div>
@@ -232,10 +283,12 @@ const AdminResource = () => {
 
     // Form States
     const [formData, setFormData] = useState({
-        name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE'
+        name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE',
+        availableStartDate: null, availableEndDate: null, startTime: '08:00', endTime: '17:00'
     });
     const [editFormData, setEditFormData] = useState({
-        name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE'
+        name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE',
+        availableStartDate: null, availableEndDate: null, startTime: '08:00', endTime: '17:00'
     });
 
     // Type Manager States
@@ -346,7 +399,7 @@ const AdminResource = () => {
             if (editId) {
                 await resourceService.updateResource(editId, { ...editFormData, capacity: Number(editFormData.capacity) });
             }
-            setEditFormData({ name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE' });
+            setEditFormData({ name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE', availableStartDate: null, availableEndDate: null, startTime: '08:00', endTime: '17:00' });
             setEditId(null);
             setIsEditModalOpen(false);
             showToast('Resource configuration updated successfully.', 'success');
@@ -362,7 +415,9 @@ const AdminResource = () => {
     const handleEdit = (res) => {
         setEditFormData({
             name: res.name, type: res.type, capacity: res.capacity,
-            location: res.location, availabilityWindow: res.availabilityWindow, status: res.status
+            location: res.location, availabilityWindow: res.availabilityWindow, status: res.status,
+            availableStartDate: res.availableStartDate, availableEndDate: res.availableEndDate,
+            startTime: res.startTime, endTime: res.endTime
         });
         setEditId(res.id);
         setIsEditModalOpen(true);
@@ -629,14 +684,18 @@ const AdminResource = () => {
             <DateTimeRangePickerModal
                 isOpen={timePicker.isOpen}
                 onClose={() => setTimePicker({ isOpen: false, targetType: null })}
-                onSet={(formattedValue) => {
-                    if (timePicker.targetType === 'add') {
-                        setFormData(prev => ({ ...prev, availabilityWindow: formattedValue }));
-                    } else {
-                        setEditFormData(prev => ({ ...prev, availabilityWindow: formattedValue }));
-                    }
+                onSet={(data) => {
+                    const updateFn = timePicker.targetType === 'add' ? setFormData : setEditFormData;
+                    updateFn(prev => ({ 
+                        ...prev, 
+                        availabilityWindow: data.displayString,
+                        availableStartDate: data.availableStartDate,
+                        availableEndDate: data.availableEndDate,
+                        startTime: data.startTime,
+                        endTime: data.endTime
+                    }));
                 }}
-                initialValue={timePicker.targetType === 'add' ? formData.availabilityWindow : editFormData.availabilityWindow}
+                initialData={timePicker.targetType === 'add' ? formData : editFormData}
             />
         </div>
     );

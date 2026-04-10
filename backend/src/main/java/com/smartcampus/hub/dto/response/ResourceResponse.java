@@ -5,7 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @Builder
@@ -18,6 +20,10 @@ public class ResourceResponse {
     private Integer capacity;
     private String location;
     private String availabilityWindow;
+    private LocalDate availableStartDate;
+    private LocalDate availableEndDate;
+    private LocalTime startTime;
+    private LocalTime endTime;
     private ResourceStatus status;
     private LocalDateTime createdAt;
 }

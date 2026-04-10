@@ -6,7 +6,9 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "resources")
@@ -35,6 +37,18 @@ public class Resource {
 
     @Column(name = "availability_window", nullable = false)
     private String availabilityWindow;
+
+    @Column(name = "available_start_date")
+    private LocalDate availableStartDate;
+
+    @Column(name = "available_end_date")
+    private LocalDate availableEndDate;
+
+    @Column(name = "start_time", nullable = false)
+    private LocalTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    private LocalTime endTime;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

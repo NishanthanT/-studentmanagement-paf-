@@ -89,10 +89,51 @@ const ResourceList = () => {
     const [error, setError] = useState(null);
     const [selectedResource, setSelectedResource] = useState(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
         fetchResources();
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
+        return () => clearInterval(timer);
     }, []);
+
+    const isResourceAvailable = (res) => {
+        if (res.status !== 'ACTIVE') return { available: false, reason: 'DECOMMISSIONED' };
+        
+        const now = currentTime;
+        // Get Local Date (YYYY-MM-DD)
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        
+        // Get Local Time (HH:mm:ss)
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timeStr = `${hours}:${minutes}:${seconds}`;
+        
+        // Date Check
+        if (res.availableStartDate && res.availableEndDate) {
+            if (dateStr < res.availableStartDate) return { available: false, reason: `Available from ${res.availableStartDate}` };
+            if (dateStr > res.availableEndDate) return { available: false, reason: `Expired on ${res.availableEndDate}` };
+        }
+        
+        // Time Check
+        // If it's a legacy resource or missing times, allow it
+        if (!res.startTime || !res.endTime) return { available: true };
+
+        const start = res.startTime;
+        const end = res.endTime;
+        
+        // Special case: if end time is 00:00, treat it as end of day (24:00)
+        const actualEnd = (end === '00:00:00' || end === '00:00') ? '23:59:59' : end;
+
+        if (timeStr < start) return { available: false, reason: `Opens at ${start.substring(0, 5)}` };
+        if (timeStr > actualEnd) return { available: false, reason: `Closed at ${end.substring(0, 5)}` };
+        
+        return { available: true };
+    };
 
     const fetchResources = async () => {
         try {
@@ -207,13 +248,18 @@ const ResourceList = () => {
                                 </div>
                             </div>
 
-                            <button 
-                                onClick={() => setSelectedResource(res)}
-                                disabled={res.status !== 'ACTIVE'}
-                                className={`mt-8 w-full py-3 px-4 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm ${res.status === 'ACTIVE' ? 'bg-gray-50 hover:bg-blue-600 dark:bg-white/5 dark:hover:bg-blue-600 text-gray-700 hover:text-white dark:text-gray-200 border border-gray-100 dark:border-white/5 group-hover:shadow-blue-500/30' : 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'}`}
-                            >
-                                {res.status === 'ACTIVE' ? 'Book Resource' : 'Unavailable'}
-                            </button>
+                            {(() => {
+                                const { available, reason } = isResourceAvailable(res);
+                                return (
+                                    <button 
+                                        onClick={() => setSelectedResource(res)}
+                                        disabled={!available}
+                                        className={`mt-8 w-full py-3 px-4 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm ${available ? 'bg-gray-50 hover:bg-blue-600 dark:bg-white/5 dark:hover:bg-blue-600 text-gray-700 hover:text-white dark:text-gray-200 border border-gray-100 dark:border-white/5 group-hover:shadow-blue-500/30' : 'bg-gray-100 dark:bg-gray-800/50 text-gray-400 cursor-not-allowed border-gray-200 dark:border-white/5'}`}
+                                    >
+                                        {available ? 'Book Resource' : reason}
+                                    </button>
+                                );
+                            })()}
                         </div>
                     ))}
                     {resources.length === 0 && !loading && (

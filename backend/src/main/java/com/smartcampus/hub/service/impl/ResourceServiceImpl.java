@@ -36,6 +36,10 @@ public class ResourceServiceImpl implements ResourceService {
                 .capacity(request.getCapacity())
                 .location(request.getLocation())
                 .availabilityWindow(request.getAvailabilityWindow())
+                .availableStartDate(request.getAvailableStartDate())
+                .availableEndDate(request.getAvailableEndDate())
+                .startTime(request.getStartTime())
+                .endTime(request.getEndTime())
                 .status(request.getStatus())
                 .build();
         
@@ -55,6 +59,10 @@ public class ResourceServiceImpl implements ResourceService {
         resource.setCapacity(request.getCapacity());
         resource.setLocation(request.getLocation());
         resource.setAvailabilityWindow(request.getAvailabilityWindow());
+        resource.setAvailableStartDate(request.getAvailableStartDate());
+        resource.setAvailableEndDate(request.getAvailableEndDate());
+        resource.setStartTime(request.getStartTime());
+        resource.setEndTime(request.getEndTime());
         resource.setStatus(request.getStatus());
 
         resource = resourceRepository.save(resource);
@@ -117,6 +125,10 @@ public class ResourceServiceImpl implements ResourceService {
                 .capacity(resource.getCapacity())
                 .location(resource.getLocation())
                 .availabilityWindow(resource.getAvailabilityWindow())
+                .availableStartDate(resource.getAvailableStartDate())
+                .availableEndDate(resource.getAvailableEndDate())
+                .startTime(resource.getStartTime())
+                .endTime(resource.getEndTime())
                 .status(resource.getStatus())
                 .createdAt(resource.getCreatedAt())
                 .build();
