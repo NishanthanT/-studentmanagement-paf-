@@ -9,32 +9,39 @@ const TABS = {
     CATEGORIES: 'CATEGORIES'
 };
 
-const formatTime = (time24) => {
+function formatTime(time24) {
     if (!time24) return '';
-    const [hours, minutes] = time24.split(':');
-    const h = parseInt(hours);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hours12 = h % 12 || 12;
-    return `${hours12}:${minutes} ${ampm}`;
-};
+    try {
+        const [hours, minutes] = time24.split(':');
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const hours12 = h % 12 || 12;
+        return `${hours12}:${minutes} ${ampm}`;
+    } catch (e) { return time24; }
+}
 
-const formatWindow = (date, start, end) => {
-    if (!date || !start || !end) return '';
-    return `${date} | ${formatTime(start)} - ${formatTime(end)}`;
-};
-
-const parseTime12to24 = (time12) => {
+function parseTime12to24(time12) {
     if (!time12) return '08:00';
-    const [time, ampm] = time12.split(' ');
-    let [hours, minutes] = time.split(':');
-    let h = parseInt(hours);
-    if (ampm === 'PM' && h < 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-    return `${h.toString().padStart(2, '0')}:${minutes}`;
-};
+    try {
+        const [time, ampm] = time12.trim().split(' ');
+        let [hours, minutes] = time.split(':');
+        let h = parseInt(hours);
+        if (ampm === 'PM' && h < 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        return `${h.toString().padStart(2, '0')}:${minutes}`;
+    } catch (e) { return '08:00'; }
+}
+
+function formatWindow(startDate, endDate, start, end) {
+    const timePart = `${formatTime(start)} - ${formatTime(end)}`;
+    if (!startDate || !endDate) return `Every Day | ${timePart}`;
+    return `${startDate} to ${endDate} | ${timePart}`;
+}
 
 const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
-    const [date, setDate] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [isEveryDay, setIsEveryDay] = useState(true);
     const [start, setStart] = useState('');
     const [end, setEnd] = useState('');
     const [error, setError] = useState('');
@@ -44,8 +51,27 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
             try {
                 const parts = initialValue.split(' | ');
                 if (parts.length === 2) {
-                    setDate(parts[0]);
-                    const times = parts[1].split(' - ');
+                    const datePart = parts[0].trim();
+                    const timePart = parts[1].trim();
+
+                    if (datePart === 'Every Day') {
+                        setIsEveryDay(true);
+                        setStartDate('');
+                        setEndDate('');
+                    } else {
+                        setIsEveryDay(false);
+                        // Robust splitting for both " to " and " - " just in case
+                        const dates = datePart.includes(' to ') 
+                            ? datePart.split(' to ') 
+                            : datePart.split(' - ');
+                        
+                        if (dates.length === 2) {
+                            setStartDate(dates[0].trim());
+                            setEndDate(dates[1].trim());
+                        }
+                    }
+
+                    const times = timePart.split(' - ');
                     if (times.length === 2) {
                         setStart(parseTime12to24(times[0]));
                         setEnd(parseTime12to24(times[1]));
@@ -53,12 +79,16 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
                 }
             } catch (err) {
                 console.error("Failed to parse initial time value:", err);
-                setDate(new Date().toISOString().split('T')[0]);
+                setIsEveryDay(true);
+                setStartDate('');
+                setEndDate('');
                 setStart('08:00');
                 setEnd('17:00');
             }
         } else if (isOpen) {
-            setDate(new Date().toISOString().split('T')[0]);
+            setIsEveryDay(true);
+            setStartDate('');
+            setEndDate('');
             setStart('08:00');
             setEnd('17:00');
         }
@@ -67,16 +97,35 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
     if (!isOpen) return null;
 
     const handleSave = () => {
-        if (!date || !start || !end) {
-            setError('Please fill in all fields.');
+        if (!start || !end) {
+            setError('Please fill in times.');
             return;
         }
         if (start >= end) {
             setError('End time must be after start time.');
             return;
         }
+
+        if (!isEveryDay) {
+            if (!startDate || !endDate) {
+                setError('Please select both start and end dates.');
+                return;
+            }
+            const today = new Date().toISOString().split('T')[0];
+            if (startDate < today) {
+                setError('Start date cannot be in the past.');
+                return;
+            }
+            if (endDate < startDate) {
+                setError('End date cannot be before start date.');
+                return;
+            }
+        }
+
         setError('');
-        onSet(formatWindow(date, start, end));
+        const sDate = isEveryDay ? null : startDate;
+        const eDate = isEveryDay ? null : endDate;
+        onSet(formatWindow(sDate, eDate, start, end), sDate, eDate);
         onClose();
     };
 
@@ -97,10 +146,37 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Select Date</label>
-                        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="modern-input w-full" />
+                    <div className="flex items-center justify-between p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800/30">
+                        <div>
+                            <p className="text-sm font-extrabold text-blue-900 dark:text-blue-100 uppercase tracking-tight">Availability Mode</p>
+                            <p className="text-xs text-blue-600/70 dark:text-blue-400/70 font-medium">Choose between daily or restricted range</p>
+                        </div>
+                        <button 
+                            type="button"
+                            onClick={() => setIsEveryDay(!isEveryDay)}
+                            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isEveryDay ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                        >
+                            <span className={`${isEveryDay ? 'translate-x-8' : 'translate-x-1'} inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm`} />
+                        </button>
                     </div>
+
+                    {isEveryDay ? (
+                        <div className="flex items-center gap-3 p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+                            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-tight">Status: Available Every Day</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Start Date</label>
+                                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="modern-input w-full" min={new Date().toISOString().split('T')[0]} />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">End Date</label>
+                                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="modern-input w-full" min={startDate || new Date().toISOString().split('T')[0]} />
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -146,7 +222,7 @@ const ActionModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText,
     );
 };
 
-const EditResourceModal = ({ isOpen, onClose, formData, handleInputChange, handleSubmit, loading, onOpenPicker, resourceTypes }) => {
+const EditResourceModal = ({ isOpen, onClose, formData, handleInputChange, handleSubmit, loading, onOpenPicker, resourceTypes, handleImageChange, imagePreview }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-md px-4 transition-all animate-fade-in">
@@ -206,6 +282,27 @@ const EditResourceModal = ({ isOpen, onClose, formData, handleInputChange, handl
                             <option value="OUT_OF_SERVICE">DECOMMISSIONED</option>
                         </select>
                     </div>
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Update Photo</label>
+                        <div className="flex items-center gap-6 p-4 bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-200 dark:border-white/10 hover:border-blue-500/50 transition-colors group">
+                            <div className="w-24 h-24 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-inner flex-shrink-0">
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <label className="block w-full">
+                                    <span className="sr-only">Choose image</span>
+                                    <input type="file" onChange={(e) => handleImageChange(e, 'edit')} accept="image/*" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 cursor-pointer" />
+                                </label>
+                                <p className="mt-2 text-[10px] text-gray-400 font-medium italic">Supports JPG, PNG or WEBP. Max 5MB recommended.</p>
+                            </div>
+                        </div>
+                    </div>
                     <div className="md:col-span-2 flex justify-end gap-5 mt-8 pt-8 border-t border-gray-100 dark:border-white/5">
                         <button type="button" onClick={onClose} className="px-8 py-3 dark:border-white/5.5 text-sm font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all">
                             Cancel
@@ -247,6 +344,27 @@ const AdminResource = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, type: 'resource' });
     const [timePicker, setTimePicker] = useState({ isOpen: false, targetType: null });
+
+    // Image states
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [editSelectedImage, setEditSelectedImage] = useState(null);
+    const [editImagePreview, setEditImagePreview] = useState(null);
+
+    const IMAGE_BASE_URL = 'http://localhost:8080/';
+
+    const handleImageChange = (e, target = 'add') => {
+        const file = e.target.files[0];
+        if (file) {
+            if (target === 'add') {
+                setSelectedImage(file);
+                setImagePreview(URL.createObjectURL(file));
+            } else {
+                setEditSelectedImage(file);
+                setEditImagePreview(URL.createObjectURL(file));
+            }
+        }
+    };
 
     useEffect(() => {
         fetchAllData();
@@ -300,8 +418,16 @@ const AdminResource = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await resourceService.createResource({ ...formData, capacity: Number(formData.capacity) });
-            setFormData({ name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE' });
+            await resourceService.createResource({ 
+                ...formData, 
+                capacity: Number(formData.capacity)
+            }, selectedImage);
+            setFormData({ 
+                name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE',
+                startDate: null, endDate: null
+            });
+            setSelectedImage(null);
+            setImagePreview(null);
             showToast('Resource has been successfully added to the system.', 'success');
             setError(null);
             fetchResources();
@@ -344,9 +470,17 @@ const AdminResource = () => {
         e.preventDefault();
         try {
             if (editId) {
-                await resourceService.updateResource(editId, { ...editFormData, capacity: Number(editFormData.capacity) });
+                await resourceService.updateResource(editId, { 
+                    ...editFormData, 
+                    capacity: Number(editFormData.capacity)
+                }, editSelectedImage);
             }
-            setEditFormData({ name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE' });
+            setEditFormData({ 
+                name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE',
+                startDate: null, endDate: null
+            });
+            setEditSelectedImage(null);
+            setEditImagePreview(null);
             setEditId(null);
             setIsEditModalOpen(false);
             showToast('Resource configuration updated successfully.', 'success');
@@ -362,9 +496,12 @@ const AdminResource = () => {
     const handleEdit = (res) => {
         setEditFormData({
             name: res.name, type: res.type, capacity: res.capacity,
-            location: res.location, availabilityWindow: res.availabilityWindow, status: res.status
+            location: res.location, availabilityWindow: res.availabilityWindow, status: res.status,
+            startDate: res.startDate, endDate: res.endDate
         });
         setEditId(res.id);
+        setEditSelectedImage(null);
+        setEditImagePreview(res.imageUrl ? `${IMAGE_BASE_URL}${res.imageUrl}` : null);
         setIsEditModalOpen(true);
     };
 
@@ -429,40 +566,54 @@ const AdminResource = () => {
                     {/* ASSET REGISTRY TAB */}
                     {activeTab === TABS.REGISTRY && (
                         <div className="glass-card overflow-hidden animate-fade-in">
-                            <table className="min-w-full divide-y divide-gray-200/40 dark:divide-white/5">
-                                <thead className="bg-gray-50/50 dark:bg-white/5">
-                                    <tr>
-                                        <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Resource</th>
-                                        <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Category</th>
-                                        <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Location</th>
-                                        <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Capacity</th>
-                                        <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Status</th>
-                                        <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                    {resources.map(res => (
-                                        <tr key={res.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-all group">
-                                            <td className="px-8 py-6 whitespace-nowrap font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase tracking-tight">{res.name}</td>
-                                            <td className="px-8 py-6 whitespace-nowrap text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{res.type}</td>
-                                            <td className="px-8 py-6 whitespace-nowrap text-sm font-medium text-gray-600 dark:text-gray-300">{res.location}</td>
-                                            <td className="px-8 py-6 whitespace-nowrap"><span className="px-3 py-1 text-[11px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg">{res.capacity}</span></td>
-                                            <td className="px-8 py-6 whitespace-nowrap">
-                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase border transition-all ${res.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800'}`}>
-                                                    {res.status.replace(/_/g, ' ')}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
-                                                <button onClick={() => handleEdit(res)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block">Edit</button>
-                                                <button onClick={() => handleDelete(res.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block">Remove</button>
-                                            </td>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200/40 dark:divide-white/5">
+                                    <thead className="bg-gray-50/50 dark:bg-white/5">
+                                        <tr>
+                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Photo</th>
+                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Resource</th>
+                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Category</th>
+                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Location</th>
+                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Capacity</th>
+                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Status</th>
+                                            <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Actions</th>
                                         </tr>
-                                    ))}
-                                    {resources.length === 0 && (
-                                        <tr><td colSpan="6" className="px-8 py-16 text-center text-gray-400 font-medium italic">Asset registry is currently empty.</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                        {resources.map(res => (
+                                            <tr key={res.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-all group">
+                                                <td className="px-8 py-6 whitespace-nowrap">
+                                                    <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-100 dark:border-white/10 shadow-sm">
+                                                        {res.imageUrl ? (
+                                                            <img src={`${IMAGE_BASE_URL}${res.imageUrl}`} alt={res.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+                                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6 whitespace-nowrap font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase tracking-tight">{res.name}</td>
+                                                <td className="px-8 py-6 whitespace-nowrap text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{res.type}</td>
+                                                <td className="px-8 py-6 whitespace-nowrap text-sm font-medium text-gray-600 dark:text-gray-300">{res.location}</td>
+                                                <td className="px-8 py-6 whitespace-nowrap"><span className="px-3 py-1 text-[11px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg">{res.capacity}</span></td>
+                                                <td className="px-8 py-6 whitespace-nowrap">
+                                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase border transition-all ${res.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800'}`}>
+                                                        {res.status.replace(/_/g, ' ')}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button onClick={() => handleEdit(res)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
+                                                    <button onClick={() => handleDelete(res.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Remove</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {resources.length === 0 && (
+                                            <tr><td colSpan="7" className="px-8 py-16 text-center text-gray-400 font-medium italic">Asset registry is currently empty.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
 
@@ -512,6 +663,27 @@ const AdminResource = () => {
                                         <option value="OUT_OF_SERVICE">DECOMMISSIONED</option>
                                     </select>
                                 </div>
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] ml-1">Asset Photo</label>
+                                    <div className="flex items-center gap-6 p-6 bg-gray-50/50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-white/10 hover:border-blue-500/50 transition-colors group">
+                                        <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white dark:bg-gray-800 shadow-inner flex-shrink-0">
+                                            {imagePreview ? (
+                                                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Add a visual representation</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 font-medium">This photo will be visible to all students during booking.</p>
+                                            <label className="block w-full">
+                                                <input type="file" onChange={(e) => handleImageChange(e, 'add')} accept="image/*" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer shadow-lg shadow-blue-500/20 transition-all" />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="md:col-span-2 flex justify-end gap-5 mt-6 pt-10 border-t border-gray-100 dark:border-white/5">
                                     <button type="submit" className="px-12 py-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold rounded-2xl shadow-xl shadow-blue-600/30 active:scale-95 transition-all">
                                         Initialize Deployment
@@ -550,30 +722,32 @@ const AdminResource = () => {
                             </div>
 
                             <div className="glass-card overflow-hidden max-w-5xl">
-                                <table className="min-w-full divide-y divide-gray-200/40 dark:divide-white/5">
-                                    <thead className="bg-gray-50/50 dark:bg-white/5">
-                                        <tr>
-                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Category Label</th>
-                                            <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Description</th>
-                                            <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Operations</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                        {resourceTypes.map(type => (
-                                            <tr key={type.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-all group">
-                                                <td className="px-8 py-6 whitespace-nowrap font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">{type.name}</td>
-                                                <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium italic">{type.description || 'No description assigned'}</td>
-                                                <td className="px-8 py-6 whitespace-nowrap text-right text-sm">
-                                                    <button onClick={() => { setEditTypeData(type); setIsTypeModalOpen(true); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block">Edit</button>
-                                                    <button onClick={() => handleTypeDelete(type.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block">Delete</button>
-                                                </td>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200/40 dark:divide-white/5">
+                                        <thead className="bg-gray-50/50 dark:bg-white/5">
+                                            <tr>
+                                                <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Category Label</th>
+                                                <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Description</th>
+                                                <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Operations</th>
                                             </tr>
-                                        ))}
-                                        {resourceTypes.length === 0 && (
-                                            <tr><td colSpan="3" className="px-8 py-16 text-center text-gray-400 font-medium italic">No custom categories mapped yet.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                            {resourceTypes.map(type => (
+                                                <tr key={type.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-all group">
+                                                    <td className="px-8 py-6 whitespace-nowrap font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">{type.name}</td>
+                                                    <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium italic">{type.description || 'No description assigned'}</td>
+                                                    <td className="px-8 py-6 whitespace-nowrap text-right text-sm">
+                                                        <button onClick={() => { setEditTypeData(type); setIsTypeModalOpen(true); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
+                                                        <button onClick={() => handleTypeDelete(type.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Delete</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {resourceTypes.length === 0 && (
+                                                <tr><td colSpan="3" className="px-8 py-16 text-center text-gray-400 font-medium italic">No custom categories mapped yet.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -599,6 +773,8 @@ const AdminResource = () => {
                 handleSubmit={handleUpdate}
                 loading={false}
                 resourceTypes={resourceTypes}
+                handleImageChange={handleImageChange}
+                imagePreview={editImagePreview}
                 onOpenPicker={(type) => setTimePicker({ isOpen: true, targetType: type })}
             />
 
@@ -629,11 +805,21 @@ const AdminResource = () => {
             <DateTimeRangePickerModal
                 isOpen={timePicker.isOpen}
                 onClose={() => setTimePicker({ isOpen: false, targetType: null })}
-                onSet={(formattedValue) => {
+                onSet={(formattedValue, sDate, eDate) => {
                     if (timePicker.targetType === 'add') {
-                        setFormData(prev => ({ ...prev, availabilityWindow: formattedValue }));
+                        setFormData(prev => ({ 
+                            ...prev, 
+                            availabilityWindow: formattedValue,
+                            startDate: sDate ? sDate + 'T00:00:00' : null,
+                            endDate: eDate ? eDate + 'T23:59:59' : null
+                        }));
                     } else {
-                        setEditFormData(prev => ({ ...prev, availabilityWindow: formattedValue }));
+                        setEditFormData(prev => ({ 
+                            ...prev, 
+                            availabilityWindow: formattedValue,
+                            startDate: sDate ? sDate + 'T00:00:00' : null,
+                            endDate: eDate ? eDate + 'T23:59:59' : null
+                        }));
                     }
                 }}
                 initialValue={timePicker.targetType === 'add' ? formData.availabilityWindow : editFormData.availabilityWindow}

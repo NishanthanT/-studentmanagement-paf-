@@ -50,12 +50,10 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                        "/api/v1/auth/signup", 
-                        "/api/v1/auth/login", 
-                        "/api/v1/auth/google",
-                        "/api/v1/auth/forgot-password",
-                        "/api/v1/auth/verify-otp",
-                        "/api/v1/auth/reset-password",
+                        "/api/v1/auth/**",
+                        "/api/v1/resources/**",
+                        "/api/v1/resource-types/**",
+                        "/api/notifications/**",
                         "/uploads/**"
                 ).permitAll()
                 .anyRequest().authenticated()
