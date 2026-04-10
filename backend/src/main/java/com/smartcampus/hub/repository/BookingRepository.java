@@ -18,6 +18,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserEmail(String email);
 
+    List<Booking> findByUserIdOrderByDateDesc(Long id);
+
     @Query("SELECT b FROM Booking b WHERE b.resource.id = :resourceId")
     List<Booking> findByResource(@Param("resourceId") Long resourceId);
 

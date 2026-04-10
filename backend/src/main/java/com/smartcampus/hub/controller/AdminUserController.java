@@ -36,6 +36,11 @@ public class AdminUserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+    @GetMapping("/users/{id}/details")
+    public ResponseEntity<com.smartcampus.hub.dto.response.UserDetailedProfileResponse> getUserDetailedProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserDetailedProfile(id));
+    }
+
     @PostMapping("/technicians")
     public ResponseEntity<Map<String, String>> createTechnician(@Valid @RequestBody CreateTechnicianRequest request) {
         userService.createTechnician(request);
@@ -65,9 +70,10 @@ public class AdminUserController {
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Map<String, String>> deleteUser(
             @PathVariable Long id, 
+            @RequestParam(required = false) String reason,
             @AuthenticationPrincipal UserDetails userDetails) {
         String currentEmail = userDetails != null ? userDetails.getUsername() : "";
-        userService.deleteUser(id, currentEmail);
+        userService.deleteUser(id, currentEmail, reason);
         return ResponseEntity.ok(Map.of("message", "Account administratively purged from the system. Notification dispatched."));
     }
 

@@ -11,13 +11,21 @@ import com.smartcampus.hub.enums.AuthProvider;
 import com.smartcampus.hub.enums.Role;
 import com.smartcampus.hub.exception.BadRequestException;
 import com.smartcampus.hub.exception.ResourceNotFoundException;
+import com.smartcampus.hub.repository.ActivityLogRepository;
+import com.smartcampus.hub.repository.BookingRepository;
+import com.smartcampus.hub.repository.TicketRepository;
 import com.smartcampus.hub.repository.UserRepository;
 import com.smartcampus.hub.service.UserService;
 import com.smartcampus.hub.service.EmailService;
+import jakarta.persistence.EntityManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.smartcampus.hub.dto.response.*;
+import com.smartcampus.hub.entity.ActivityLog;
+import com.smartcampus.hub.entity.Booking;
+import com.smartcampus.hub.entity.Ticket;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import java.io.ByteArrayOutputStream;
@@ -28,13 +36,23 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final ActivityLogRepository activityLogRepository;
+    private final BookingRepository bookingRepository;
+    private final TicketRepository ticketRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final EntityManager entityManager;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
+    public UserServiceImpl(UserRepository userRepository, ActivityLogRepository activityLogRepository, 
+                           BookingRepository bookingRepository, TicketRepository ticketRepository,
+                           PasswordEncoder passwordEncoder, EmailService emailService, EntityManager entityManager) {
         this.userRepository = userRepository;
+        this.activityLogRepository = activityLogRepository;
+        this.bookingRepository = bookingRepository;
+        this.ticketRepository = ticketRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.entityManager = entityManager;
     }
 
     @Override
@@ -51,6 +69,44 @@ public class UserServiceImpl implements UserService {
                 .status(user.getStatus())
                 .profileImage(user.getProfileImage())
                 .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public UserDetailedProfileResponse getUserDetailedProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        UserProfileResponse profileResponse = mapToResponse(user);
+
+        List<TicketResponse> tickets = ticketRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .limit(10) // Only latest 10
+                .map(this::mapTicket)
+                .collect(Collectors.toList());
+
+        List<BookingResponse> bookings = bookingRepository.findByUserIdOrderByDateDesc(userId)
+                .stream()
+                .limit(10)
+                .map(this::mapBooking)
+                .collect(Collectors.toList());
+
+        List<ActivityLogResponse> activityLogs = activityLogRepository.findByUserIdOrderByTimestampDesc(userId)
+                .stream()
+                .limit(20)
+                .map(log -> ActivityLogResponse.builder()
+                        .id(log.getId())
+                        .action(log.getAction())
+                        .details(log.getDetails())
+                        .timestamp(log.getTimestamp())
+                        .build())
+                .collect(Collectors.toList());
+
+        return UserDetailedProfileResponse.builder()
+                .profile(profileResponse)
+                .recentTickets(tickets)
+                .recentBookings(bookings)
+                .activityLogs(activityLogs)
                 .build();
     }
 
@@ -144,7 +200,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void deleteUser(Long userId, String currentAdminEmail) {
+    public void deleteUser(Long userId, String currentAdminEmail, String reason) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
                 
@@ -152,11 +208,30 @@ public class UserServiceImpl implements UserService {
             throw new BadRequestException("Action denied. You cannot delete your own active Admin session account.");
         }
         
+        // Remove foreign key dependencies associated with user specifically the user's activity logs
+        activityLogRepository.deleteByUserId(userId);
+        
+        // Dynamically purge other extensive cascading entities to prevent FK Constraint exceptions 
+        entityManager.createNativeQuery("DELETE FROM notifications WHERE user_id = :id").setParameter("id", userId).executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM bookings WHERE user_id = :id").setParameter("id", userId).executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM ticket_comments WHERE user_id = :id").setParameter("id", userId).executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM password_reset_otp WHERE email = :email").setParameter("email", user.getEmail()).executeUpdate();
+        
+        // Nullify assignment for any Technician user
+        entityManager.createNativeQuery("UPDATE tickets SET technician_id = NULL WHERE technician_id = :id").setParameter("id", userId).executeUpdate();
+        
+        // Force drop attachments and comments of any tickets OWNED by the user, then drop the tickets themselves
+        entityManager.createNativeQuery("DELETE FROM ticket_attachments WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = :id)").setParameter("id", userId).executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM ticket_comments WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = :id)").setParameter("id", userId).executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM tickets WHERE user_id = :id").setParameter("id", userId).executeUpdate();
+        
         userRepository.delete(user);
         
+        String customReason = (reason != null && !reason.trim().isEmpty()) ? reason : "Violation of operational security and compliance.";
+
         emailService.sendEmail(user.getEmail(), 
             "Smart Campus Hub - Account Deleted", 
-            "Hello " + user.getFullName() + ",\n\nYour account has been officially deleted from the Smart Campus Operations Hub by an Administrator.\n\nRegards,\nSmart Campus Team");
+            "Hello " + user.getFullName() + ",\n\nYour account has been officially deleted from the Smart Campus Operations Hub by an Administrator.\n\nReason for deletion: " + customReason + "\n\nRegards,\nSmart Campus Team");
     }
 
     @Override
@@ -224,5 +299,27 @@ public class UserServiceImpl implements UserService {
                 .profileImage(user.getProfileImage())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private TicketResponse mapTicket(Ticket ticket) {
+        return TicketResponse.builder()
+                .id(ticket.getId())
+                .category(ticket.getCategory())
+                .status(ticket.getStatus())
+                .priority(ticket.getPriority())
+                .createdAt(ticket.getCreatedAt())
+                .build(); // Using partial mapping to avoid heavy load on Drawer
+    }
+
+    private BookingResponse mapBooking(Booking booking) {
+        return BookingResponse.builder()
+                .id(booking.getId())
+                .resourceName(booking.getResource() != null ? booking.getResource().getName() : "Unknown")
+                .date(booking.getDate())
+                .startTime(booking.getStartTime())
+                .endTime(booking.getEndTime())
+                .status(booking.getStatus())
+                .createdAt(booking.getCreatedAt())
+                .build(); // Partial mapping
     }
 }

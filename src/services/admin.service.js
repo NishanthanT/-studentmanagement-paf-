@@ -31,6 +31,11 @@ export const adminService = {
     return response.data;
   },
 
+  getUserDetails: async (userId) => {
+    const response = await axios.get(`${API_URL}admin/users/${userId}/details`, getAuthHeaders());
+    return response.data;
+  },
+
   updateRole: async (userId, role) => {
     const response = await axios.put(`${API_URL}admin/users/${userId}/role`, { role }, getAuthHeaders());
     return response.data;
@@ -41,8 +46,12 @@ export const adminService = {
     return response.data;
   },
 
-  deleteUser: async (userId) => {
-    const response = await axios.delete(`${API_URL}admin/users/${userId}`, getAuthHeaders());
+  deleteUser: async (userId, reason) => {
+    const config = getAuthHeaders();
+    if (reason) {
+      config.params = { reason };
+    }
+    const response = await axios.delete(`${API_URL}admin/users/${userId}`, config);
     return response.data;
   },
 
