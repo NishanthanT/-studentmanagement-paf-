@@ -105,8 +105,8 @@ const MainLayout = () => {
         <div className="max-w-[1440px] mx-auto px-6 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
           <div>&copy; {new Date().getFullYear()} Campus Intel Hub</div>
           <div className="flex gap-4">
-            <span className="hover:text-blue-500 cursor-pointer">Security</span>
-            <span className="hover:text-blue-500 cursor-pointer">Support</span>
+            <span className="hover:text-blue-600 cursor-pointer">Security</span>
+            <span className="hover:text-blue-600 cursor-pointer">Support</span>
           </div>
         </div>
       </footer>

@@ -78,6 +78,25 @@ const TicketDetails = () => {
         }
     };
 
+    const handleDeleteClick = (commentId) => {
+        setDeleteCommentId(commentId);
+    };
+
+    const startEditing = (comment) => {
+        setEditingCommentId(comment.id);
+        setEditText(comment.commentText);
+    };
+
+    const handleEditComment = async (commentId) => {
+        try {
+            await ticketService.editComment(commentId, { commentText: editText });
+            setEditingCommentId(null);
+            await fetchTicket(false);
+        } catch (err) {
+            console.error('Failed to edit comment');
+        }
+    };
+
     const getImageUrl = (file) => {
         if (!file) return '';
         const path = typeof file === 'string' ? file : (file.filePath || file.url || file.imageUrl || '');
@@ -253,17 +272,40 @@ const TicketDetails = () => {
                                                 {comment.userName.charAt(0)}
                                             </motion.div>
                                         </div>
-                                        <div className="flex-1 space-y-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest">{comment.userName}</span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-60">{new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                        <div className="flex-1 space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest">{comment.userName}</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-60">{new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                </div>
+                                                
+                                                {comment.userId === currentUser?.id && editingCommentId !== comment.id && (
+                                                    <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => startEditing(comment)} className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-600">Edit</button>
+                                                        <button onClick={() => handleDeleteClick(comment.id)} className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-600">Delete</button>
+                                                    </div>
+                                                )}
                                             </div>
                                             
-                                            <div className="bg-slate-50 dark:bg-white/2 p-5 rounded-2xl rounded-tl-none border border-slate-100 dark:border-white/5 shadow-sm group-hover:border-blue-600/20 transition-all">
-                                                <p className="text-slate-700 dark:text-slate-300 text-[15px] font-medium leading-relaxed">
-                                                    {comment.commentText}
-                                                </p>
-                                            </div>
+                                            {editingCommentId === comment.id ? (
+                                                <div className="pt-2 flex flex-col gap-3">
+                                                    <textarea 
+                                                        className="modern-input w-full h-24 text-sm font-bold"
+                                                        value={editText}
+                                                        onChange={(e) => setEditText(e.target.value)}
+                                                    ></textarea>
+                                                    <div className="flex gap-3">
+                                                        <button onClick={() => handleEditComment(comment.id)} className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:underline">Commit Changes</button>
+                                                        <button onClick={() => setEditingCommentId(null)} className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:underline">Abort</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-slate-50 dark:bg-white/2 p-5 rounded-2xl rounded-tl-none border border-slate-100 dark:border-white/5 shadow-sm group-hover:border-blue-600/20 transition-all">
+                                                    <p className="text-slate-700 dark:text-slate-300 text-[15px] font-medium leading-relaxed">
+                                                        {comment.commentText}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </motion.div>
                                 ))}
@@ -371,6 +413,7 @@ const TicketDetails = () => {
                                 >
                                     <h5 className="text-[9px] font-black uppercase tracking-widest text-emerald-100 mb-3 opacity-80">Resolution Status</h5>
                                     <p className="text-lg font-black tracking-tight leading-snug">Incident Successfully Mitigated</p>
+                                    <p className="text-[11px] font-bold text-emerald-100/70 mt-3 leading-relaxed">{ticket.resolutionNotes}</p>
                                 </motion.div>
                             )}
                         </div>
@@ -396,7 +439,39 @@ const TicketDetails = () => {
                             src={viewImage} 
                             alt="High Res Telemetry" 
                             className="max-w-full max-h-full object-contain rounded-[3rem] shadow-3xl border border-white/5" 
+                            onClick={(e) => e.stopPropagation()} 
                         />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteCommentId && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="glass-panel-heavy max-w-sm w-full p-10 rounded-[3rem] text-center space-y-8"
+                        >
+                            <div className="w-16 h-16 bg-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Purge Intelligence?</h3>
+                                <p className="text-slate-500 text-sm font-medium mt-2">This operational update will be permanently deleted.</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <button onClick={() => setDeleteCommentId(null)} className="flex-1 py-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500">Cancel</button>
+                                <button onClick={confirmDelete} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-rose-500/30">Delete</button>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

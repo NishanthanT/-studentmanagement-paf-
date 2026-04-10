@@ -49,10 +49,10 @@ const Dashboard = () => {
               <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
                 Welcome back, <span className="font-bold text-blue-600 dark:text-blue-400">{user?.fullName || 'User'}</span>!
                 {user?.role === 'ADMIN'
-                  ? ' Manage resources, track users, and handle tickets with ease.'
-                  : user?.role === 'TECHNICIAN'
-                    ? ' Manage and resolve campus maintenance tickets efficiently.'
-                    : ' Book campus resources and manage your maintenance tickets.'}
+                   ? ' Manage resources, track users, and handle tickets with ease.'
+                   : user?.role === 'TECHNICIAN'
+                     ? ' Manage and resolve campus maintenance tickets efficiently.'
+                     : ' Book campus resources and manage your maintenance tickets.'}
               </p>
             </div>
             {user?.role === 'TECHNICIAN' && (
@@ -175,3 +175,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

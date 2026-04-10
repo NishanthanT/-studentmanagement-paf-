@@ -25,50 +25,37 @@
   }
 
   button {
-    --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    --animate-shimmer: shimmer 2s infinite linear;
-  }
-
-  @keyframes shimmer {
-    0% { background-position: -1000px 0; }
-    100% { background-position: 1000px 0; }
-  }
-
-  @keyframes float {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-    100% { transform: translateY(0px); }
-  }
-
-  .animate-shimmer {
-    background: linear-gradient(90deg, 
-      rgba(255, 255, 255, 0) 0%, 
-      rgba(255, 255, 255, 0.05) 50%, 
-      rgba(255, 255, 255, 0) 100%
-    );
-    background-size: 1000px 100%;
-    animation: var(--animate-shimmer);
-  }
-
-  .noise-overlay {
-    position: absolute;
-    inset: 0;
-    opacity: 0.2;
-    pointer-events: none;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  }
-
-  button {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
     @apply select-none;
+  }
+
+  button:active {
+    transform: scale(0.95);
   }
 }
 
-/* Custom Keyframes */
-@keyframes bg-transfer {
+/* Custom Animations */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes bgTransfer {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
 }
 
 @keyframes fade-in-up {
@@ -86,6 +73,13 @@
   .glass-card {
     @apply bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-slate-800/50 shadow-sm;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card:hover {
+    @apply shadow-xl border-blue-500/30;
+    transform: translateY(-2px);
   }
 
   .glass-panel-heavy {
@@ -94,21 +88,36 @@
 
   /* Trending Input Design */
   .modern-input {
-    @apply bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 outline-none transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium;
+    @apply bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 outline-none transition-all duration-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-medium dark:text-white;
   }
 
   /* Pro Badges */
   .pro-badge {
-    @apply px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all;
+    @apply px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border flex items-center gap-2 transition-all;
   }
 
-  /* Real-World Table Styles */
-  .enterprise-table-row {
-    @apply hover:bg-slate-500/5 transition-colors duration-150 border-b border-slate-100 dark:border-slate-900;
+  /* Interactive Utilities */
+  .interactive-box {
+    @apply hover:shadow-2xl hover:-translate-y-1 transition-all duration-300;
+  }
+
+  .noise-overlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    z-index: 1;
   }
 }
 
 @layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-pulse-glow {
+    animation: pulseGlow 8s ease-in-out infinite;
+  }
   .animate-fade-in-up {
     animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
@@ -117,15 +126,7 @@
   }
   .bg-animate-gradient {
     background-size: 200% 200%;
-    animation: bg-transfer 8s linear infinite;
-  }
-  
-  /* Alignment Helpers */
-  .flex-center {
-    @apply flex items-center justify-center;
-  }
-  .absolute-center {
-    @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2;
+    animation: bgTransfer 8s linear infinite;
   }
 }
 
@@ -143,7 +144,7 @@
   @apply bg-slate-200 dark:bg-slate-800 rounded-full hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors;
 }
 
-/* Recharts Customization Overlay */
+/* Recharts Customization Override */
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
   @apply stroke-slate-100 dark:stroke-slate-800;
