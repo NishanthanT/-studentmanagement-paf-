@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resourceService } from '../../services/resource.service';
+import { adminBookingService } from '../../services/booking.service';
 import { useToast } from '../../context/ToastContext';
+import AnalyticsReport from '../../components/AnalyticsReport';
+import { generateBookingReportPDF } from '../../utils/pdfGenerator';
 
 const TABS = {
     REGISTRY: 'REGISTRY',
@@ -381,6 +384,10 @@ const AdminResource = () => {
     const [imagePreview, setImagePreview] = useState(null);
     const [editSelectedImage, setEditSelectedImage] = useState(null);
     const [editImagePreview, setEditImagePreview] = useState(null);
+    
+    // PDF Generation
+    const [reportData, setReportData] = useState(null);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     const IMAGE_BASE_URL = 'http://localhost:8080/';
 
@@ -400,6 +407,34 @@ const AdminResource = () => {
     useEffect(() => {
         fetchAllData();
     }, []);
+
+    const handleExportPDF = async () => {
+        try {
+            setIsGeneratingPdf(true);
+            const data = await adminBookingService.getAllBookings();
+            const bookings = data.data || data;
+            setReportData(bookings);
+        } catch (err) {
+            showToast("Failed to fetch booking data for PDF", "error");
+            setIsGeneratingPdf(false);
+        }
+    };
+
+    useEffect(() => {
+        if (reportData && isGeneratingPdf) {
+            setTimeout(async () => {
+                try {
+                    await generateBookingReportPDF('analytics-report-container', reportData, resources);
+                    showToast("PDF Analytics Report downloaded successfully!", "success");
+                } catch (err) {
+                    showToast("Error generating PDF", "error");
+                } finally {
+                    setReportData(null);
+                    setIsGeneratingPdf(false);
+                }
+            }, 800); 
+        }
+    }, [reportData, isGeneratingPdf, resources, showToast]);
 
     const fetchAllData = async () => {
         try {
@@ -569,8 +604,25 @@ const AdminResource = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-6 tracking-tight">Resource Operations <span className="text-blue-600 dark:text-blue-400">Center</span></h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+            {reportData && <AnalyticsReport bookings={reportData} resources={resources} />}
+            
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Resource Operations <span className="text-blue-600 dark:text-blue-400">Center</span></h1>
+                
+                <button 
+                    onClick={handleExportPDF} 
+                    disabled={isGeneratingPdf} 
+                    className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-80"
+                >
+                    {isGeneratingPdf ? (
+                        <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    )}
+                    {isGeneratingPdf ? 'Generating PDF...' : 'Export Analytics PDF'}
+                </button>
+            </div>
 
             {/* Premium Tab Navigation */}
             <div className="flex gap-4 mb-10 bg-gray-100/50 dark:bg-white/5 p-1.5 rounded-2xl w-fit backdrop-blur-sm border border-gray-200/50 dark:border-white/5">
