@@ -2,6 +2,7 @@ package com.smartcampus.hub.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
 
 @Entity
 @Table(name = "resource_types")
@@ -21,4 +22,9 @@ public class ResourceType {
 
     @Column
     private String description;
+
+    @ElementCollection
+    @CollectionTable(name = "resource_type_locations", joinColumns = @JoinColumn(name = "resource_type_id"))
+    @Column(name = "location")
+    private List<String> locations;
 }
