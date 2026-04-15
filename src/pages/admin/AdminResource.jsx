@@ -64,10 +64,10 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
                     } else {
                         setIsEveryDay(false);
                         // Robust splitting for both " to " and " - " just in case
-                        const dates = datePart.includes(' to ') 
-                            ? datePart.split(' to ') 
+                        const dates = datePart.includes(' to ')
+                            ? datePart.split(' to ')
                             : datePart.split(' - ');
-                        
+
                         if (dates.length === 2) {
                             setStartDate(dates[0].trim());
                             setEndDate(dates[1].trim());
@@ -154,7 +154,7 @@ const DateTimeRangePickerModal = ({ isOpen, onClose, onSet, initialValue }) => {
                             <p className="text-sm font-extrabold text-blue-900 dark:text-blue-100 uppercase tracking-tight">Availability Mode</p>
                             <p className="text-xs text-blue-600/70 dark:text-blue-400/70 font-medium">Choose between daily or restricted range</p>
                         </div>
-                        <button 
+                        <button
                             type="button"
                             onClick={() => setIsEveryDay(!isEveryDay)}
                             className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isEveryDay ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
@@ -354,6 +354,7 @@ const AdminResource = () => {
     const { showToast } = useToast();
     const [resources, setResources] = useState([]);
     const [resourceTypes, setResourceTypes] = useState([]);
+    const [allBookings, setAllBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(TABS.REGISTRY);
     const [error, setError] = useState(null);
@@ -370,7 +371,7 @@ const AdminResource = () => {
     const [typeForm, setTypeForm] = useState({ name: '', description: '', locations: [''] });
     const [editTypeData, setEditTypeData] = useState(null);
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-    
+
     // Alerts
     const [validationAlert, setValidationAlert] = useState(null);
 
@@ -384,7 +385,7 @@ const AdminResource = () => {
     const [imagePreview, setImagePreview] = useState(null);
     const [editSelectedImage, setEditSelectedImage] = useState(null);
     const [editImagePreview, setEditImagePreview] = useState(null);
-    
+
     // PDF Generation
     const [reportData, setReportData] = useState(null);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -432,19 +433,21 @@ const AdminResource = () => {
                     setReportData(null);
                     setIsGeneratingPdf(false);
                 }
-            }, 800); 
+            }, 800);
         }
     }, [reportData, isGeneratingPdf, resources, showToast]);
 
     const fetchAllData = async () => {
         try {
             setLoading(true);
-            const [resourceData, typeData] = await Promise.all([
+            const [resourceData, typeData, bookingRes] = await Promise.all([
                 resourceService.getAllResources(),
-                resourceService.getAllResourceTypes()
+                resourceService.getAllResourceTypes(),
+                adminBookingService.getAllBookings().catch(() => ({ data: [] }))
             ]);
             setResources(resourceData);
             setResourceTypes(typeData);
+            setAllBookings(bookingRes.data || bookingRes || []);
             setError(null);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to synchronize with server');
@@ -455,8 +458,12 @@ const AdminResource = () => {
 
     const fetchResources = async () => {
         try {
-            const data = await resourceService.getAllResources();
+            const [data, bookingRes] = await Promise.all([
+                resourceService.getAllResources(),
+                adminBookingService.getAllBookings().catch(() => ({ data: [] }))
+            ]);
             setResources(data);
+            setAllBookings(bookingRes.data || bookingRes || []);
         } catch (err) {
             setError('Failed to refresh registry');
         }
@@ -484,11 +491,11 @@ const AdminResource = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await resourceService.createResource({ 
-                ...formData, 
+            await resourceService.createResource({
+                ...formData,
                 capacity: Number(formData.capacity)
             }, selectedImage);
-            setFormData({ 
+            setFormData({
                 name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE',
                 startDate: null, endDate: null
             });
@@ -544,12 +551,12 @@ const AdminResource = () => {
         e.preventDefault();
         try {
             if (editId) {
-                await resourceService.updateResource(editId, { 
-                    ...editFormData, 
+                await resourceService.updateResource(editId, {
+                    ...editFormData,
                     capacity: Number(editFormData.capacity)
                 }, editSelectedImage);
             }
-            setEditFormData({ 
+            setEditFormData({
                 name: '', type: '', capacity: '', location: '', availabilityWindow: '', status: 'ACTIVE',
                 startDate: null, endDate: null
             });
@@ -603,16 +610,37 @@ const AdminResource = () => {
         }
     };
 
+    const isResourceCurrentlyBooked = (resourceId) => {
+        if (!allBookings || allBookings.length === 0) return false;
+        const now = new Date();
+        return allBookings.some(b => {
+            if (b.resourceId !== resourceId) return false;
+            // Ignore if cancelled or rejected
+            if (b.status === 'REJECTED' || b.status === 'CANCELLED') return false;
+
+            // Check if booking end time hasn't passed
+            try {
+                // date format: YYYY-MM-DD, endTime format: HH:mm:ss
+                let endStr = b.endTime;
+                if (endStr && endStr.length === 5) { endStr += ':00'; } // Ensure seconds exist
+                const endDateTime = new Date(`${b.date}T${endStr}`);
+                return endDateTime > now;
+            } catch (e) {
+                return false;
+            }
+        });
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
             {reportData && <AnalyticsReport bookings={reportData} resources={resources} />}
-            
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Resource Operations <span className="text-blue-600 dark:text-blue-400">Center</span></h1>
-                
-                <button 
-                    onClick={handleExportPDF} 
-                    disabled={isGeneratingPdf} 
+
+                <button
+                    onClick={handleExportPDF}
+                    disabled={isGeneratingPdf}
                     className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-80"
                 >
                     {isGeneratingPdf ? (
@@ -694,8 +722,14 @@ const AdminResource = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button onClick={() => handleEdit(res)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
-                                                    <button onClick={() => handleDelete(res.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Remove</button>
+                                                    {isResourceCurrentlyBooked(res.id) ? (
+                                                        <span className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg text-[10px] font-extrabold uppercase tracking-widest border border-gray-200 dark:border-gray-700 cursor-not-allowed">Booked</span>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => handleEdit(res)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
+                                                            <button onClick={() => handleDelete(res.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Remove</button>
+                                                        </>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}
@@ -867,7 +901,7 @@ const AdminResource = () => {
                                                         </div>
                                                     </td>
                                                     <td className="px-8 py-6 whitespace-nowrap text-right text-sm">
-                                                        <button onClick={() => { setEditTypeData({...type, locations: type.locations?.length > 0 ? type.locations : ['']}); setIsTypeModalOpen(true); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
+                                                        <button onClick={() => { setEditTypeData({ ...type, locations: type.locations?.length > 0 ? type.locations : [''] }); setIsTypeModalOpen(true); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-extrabold mr-6 transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Edit</button>
                                                         <button onClick={() => handleTypeDelete(type.id)} className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-extrabold transition-all transform hover:scale-110 active:scale-95 inline-block scale-110">Delete</button>
                                                     </td>
                                                 </tr>
@@ -970,15 +1004,15 @@ const AdminResource = () => {
                 onClose={() => setTimePicker({ isOpen: false, targetType: null })}
                 onSet={(formattedValue, sDate, eDate) => {
                     if (timePicker.targetType === 'add') {
-                        setFormData(prev => ({ 
-                            ...prev, 
+                        setFormData(prev => ({
+                            ...prev,
                             availabilityWindow: formattedValue,
                             startDate: sDate ? sDate + 'T00:00:00' : null,
                             endDate: eDate ? eDate + 'T23:59:59' : null
                         }));
                     } else {
-                        setEditFormData(prev => ({ 
-                            ...prev, 
+                        setEditFormData(prev => ({
+                            ...prev,
                             availabilityWindow: formattedValue,
                             startDate: sDate ? sDate + 'T00:00:00' : null,
                             endDate: eDate ? eDate + 'T23:59:59' : null

@@ -68,8 +68,8 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        // Adjust for your specific React Vite port (usually 5173 or 3000)
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
+        // Adjust for your specific React Vite port or Mobile WiFi IPs
+        configuration.setAllowedOriginPatterns(java.util.List.of("*"));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);

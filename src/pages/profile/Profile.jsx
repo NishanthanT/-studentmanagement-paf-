@@ -9,6 +9,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   
   const [formData, setFormData] = useState({
@@ -112,6 +113,27 @@ const Profile = () => {
     });
   };
 
+  const handleDownloadQR = async () => {
+    try {
+      const qrData = `http://${window.location.host}/verify-id/${user?.id}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
+      
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Smart-Campus-ID-${user.fullName.replace(/\s+/g, '-')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      showAlert('Failed to download QR Code. Try again.', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -142,7 +164,7 @@ const Profile = () => {
       {/* Hero Header Card */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-gray-800 dark:to-gray-900 rounded-3xl shadow-xl overflow-hidden relative group transition-all">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="px-8 py-12 relative z-10 flex flex-col items-center sm:flex-row gap-8">
+        <div className="px-8 py-12 relative z-10 flex flex-col items-center lg:flex-row flex-wrap gap-8 justify-between">
           
           {/* Real Avatar System */}
           <div className="relative isolate group/avatar shrink-0">
@@ -174,9 +196,9 @@ const Profile = () => {
             />
           </div>
 
-          <div className="text-center sm:text-left text-white mt-4 sm:mt-0 flex-1">
-            <h1 className="text-4xl font-extrabold tracking-tight mb-2 drop-shadow-md">{user.fullName}</h1>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 items-center sm:items-start text-blue-100 dark:text-gray-300">
+          <div className="text-center lg:text-left text-white mt-4 lg:mt-0 flex-1 min-w-0">
+            <h1 className="text-4xl font-extrabold tracking-tight mb-2 drop-shadow-md truncate">{user.fullName}</h1>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 items-center lg:items-start text-blue-100 dark:text-gray-300">
               <span className="flex items-center gap-1.5"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> {user.email}</span>
               <span className="inline-flex items-center px-3 py-1 bg-white/20 dark:bg-black/30 backdrop-blur-md rounded-full text-sm font-bold tracking-wide uppercase shadow-sm">
                 <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> {user.role}
@@ -185,10 +207,18 @@ const Profile = () => {
           </div>
 
           {!isEditing && (
-            <div className="mt-4 sm:mt-0 self-center sm:self-start border-2 border-white/20 dark:border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm">
+            <div className="mt-4 lg:mt-0 self-center lg:self-start flex flex-col sm:flex-row gap-3 border-2 border-white/20 dark:border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm p-1 shrink-0">
+              <button 
+                onClick={() => setShowQRModal(true)}
+                className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold rounded-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                Smart ID Card
+              </button>
+              
               <button 
                 onClick={() => setIsEditing(true)}
-                className="px-6 py-3 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/40 text-white font-bold transition-all flex items-center gap-2"
+                className="px-5 py-2.5 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/40 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 Edit Profile
@@ -293,7 +323,46 @@ const Profile = () => {
           </div>
         )}
       </div>
-      </div>
+
+      {/* Modern QR Code Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-gray-950/80 backdrop-blur-md px-4 transition-all animate-fade-in" onClick={() => setShowQRModal(false)}>
+          <div 
+            className="w-full max-w-sm bg-white dark:bg-[#0B0D17] shadow-2xl z-[160] rounded-3xl flex flex-col items-center overflow-hidden border border-gray-200 dark:border-white/10 p-8 relative animate-zoom-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button onClick={() => setShowQRModal(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-full bg-gray-100 dark:bg-white/5 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white mb-4 shadow-lg shadow-blue-500/30">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+            </div>
+            
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white text-center mb-1">Campus ID Badge</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium text-center mb-8 uppercase tracking-widest leading-relaxed">Present this code to campus security for full access validation.</p>
+            
+            <div className="bg-white p-3 rounded-2xl shadow-inner border border-gray-100 ring-4 ring-blue-50 dark:ring-blue-900/20 mb-8">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`http://${window.location.host}/verify-id/${user.id}`)}`} 
+                alt="Smart ID QR Code" 
+                className="w-48 h-48 rounded-xl object-contain"
+                crossOrigin="anonymous"
+              />
+            </div>
+
+            <button 
+              onClick={handleDownloadQR}
+              className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-black text-sm uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Download QR Code
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
     </div>
   );
 };

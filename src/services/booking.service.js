@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Separating admin and user endpoints makes things easier to track
-const ADMIN_API_URL = 'http://localhost:8080/api/admin/bookings';
-const USER_API_URL = 'http://localhost:8080/api/v1/bookings';
+const ADMIN_API_URL = `http://${window.location.hostname}:8080/api/admin/bookings`;
+const USER_API_URL = `http://${window.location.hostname}:8080/api/v1/bookings`;
 
 // helper to grab the auth token for secure requests
 const getAuthHeaders = () => {

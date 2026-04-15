@@ -25,6 +25,7 @@ import Notifications from '../pages/notifications/Notifications';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminActivityLogs from '../pages/admin/AdminActivityLogs';
 import MyBookings from '../pages/resource/MyBookings';
+import VerifyIdentity from '../pages/admin/VerifyIdentity';
 
 const AppRoutes = () => {
   return (
@@ -110,6 +111,14 @@ const AppRoutes = () => {
             element={
               <RoleProtectedRoute allowedRoles={['TECHNICIAN']}>
                 <AssignedTickets />
+              </RoleProtectedRoute>
+            } 
+          />
+          <Route 
+            path="verify-id/:userId" 
+            element={
+              <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                <VerifyIdentity />
               </RoleProtectedRoute>
             } 
           />
